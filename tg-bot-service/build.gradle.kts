@@ -1,17 +1,17 @@
 plugins {
     java
-    id("org.springframework.boot")
-    id("org.jetbrains.kotlin.jvm")
-    id("org.jetbrains.kotlin.plugin.spring")
-    id("org.jlleitschuh.gradle.ktlint")
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.spring)
+    alias(libs.plugins.ktlint)
 }
 
 dependencies {
-    implementation(platform("org.springframework.boot:spring-boot-dependencies:4.0.3"))
-    testImplementation(platform("org.springframework.boot:spring-boot-dependencies:4.0.3"))
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    implementation(platform(libs.spring.boot.bom))
+    testImplementation(platform(libs.spring.boot.bom))
+    implementation(libs.bundles.spring.boot.base)
+    implementation(libs.jackson.module.kotlin)
+    implementation(libs.kotlin.logging)
+    testImplementation(libs.bundles.spring.boot.test)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }

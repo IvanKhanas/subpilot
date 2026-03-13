@@ -4,11 +4,11 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 plugins {
-    id("org.sonarqube") version "7.2.3.7755"
-    id("org.springframework.boot") version "4.0.3" apply false
-    id("org.jetbrains.kotlin.jvm") version "2.2.21" apply false
-    id("org.jetbrains.kotlin.plugin.spring") version "2.2.21" apply false
-    id("org.jlleitschuh.gradle.ktlint") version "13.1.0" apply false
+    alias(libs.plugins.sonarqube)
+    alias(libs.plugins.spring.boot) apply false
+    alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.spring) apply false
+    alias(libs.plugins.ktlint) apply false
 }
 
 allprojects {

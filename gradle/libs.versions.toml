@@ -1,0 +1,28 @@
+[versions]
+spring-boot = "4.0.3"
+kotlin = "2.2.21"
+ktlint = "13.1.0"
+sonarqube = "7.2.3.7755"
+jackson-module-kotlin = "3.0.4"
+kotlin-logging = "7.0.3"
+
+[libraries]
+spring-boot-bom = { group = "org.springframework.boot", name = "spring-boot-dependencies", version.ref = "spring-boot" }
+spring-boot-starter-web = { group = "org.springframework.boot", name = "spring-boot-starter-web" }
+spring-boot-starter-test = { group = "org.springframework.boot", name = "spring-boot-starter-test" }
+kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect" }
+kotlin-test-junit5 = { group = "org.jetbrains.kotlin", name = "kotlin-test-junit5" }
+junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
+jackson-module-kotlin = { group = "tools.jackson.module", name = "jackson-module-kotlin", version.ref = "jackson-module-kotlin" }
+kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", version.ref = "kotlin-logging" }
+
+[bundles]
+spring-boot-base = ["spring-boot-starter-web", "kotlin-reflect"]
+spring-boot-test = ["spring-boot-starter-test", "kotlin-test-junit5"]
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
+sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
