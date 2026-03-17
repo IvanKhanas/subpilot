@@ -1,4 +1,4 @@
-package org.example.subpilot.chat
+package com.xeno.subpilot.chat
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication

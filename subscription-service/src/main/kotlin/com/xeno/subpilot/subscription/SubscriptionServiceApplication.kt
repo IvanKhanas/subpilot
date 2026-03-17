@@ -1,4 +1,4 @@
-package org.example.subpilot.subscription
+package com.xeno.subpilot.subscription
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication

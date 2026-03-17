@@ -1,4 +1,4 @@
-package org.example.subpilot.payment
+package com.xeno.subpilot.payment
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
