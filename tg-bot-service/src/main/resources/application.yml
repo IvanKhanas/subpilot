@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: tg-bot-service
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-unknown-properties: false
+
+telegram:
+  bot:
+    token: ${TELEGRAM_BOT_TOKEN}
+    polling-timeout: ${TELEGRAM_POLLING_TIMEOUT:30}
+
+server:
+  port: ${TELEGRAM_BOT_SERVER_PORT:1991}

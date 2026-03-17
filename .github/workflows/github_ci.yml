@@ -16,14 +16,9 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     container:
-      image: debian:12-slim
+      image: cimg/openjdk:21.0
 
     steps:
-      - name: Install base tools
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends libc6 git
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -38,21 +33,16 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build (without lint/tests)
-        run: ./gradlew build -x test -x ktlintCheck
+        run: ./gradlew build -x check
 
   test:
     name: Test
     runs-on: ubuntu-latest
     container:
-      image: debian:12-slim
+      image: cimg/openjdk:21.0
     needs: build
 
     steps:
-      - name: Install base tools
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends libc6 git
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -73,15 +63,15 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     container:
-      image: debian:12-slim
+      image: cimg/openjdk:21.0
     needs: test
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+      SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
 
     steps:
-      - name: Install base tools
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends libc6 git
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -101,14 +91,11 @@ jobs:
         run: ./gradlew ktlintCheck
 
       - name: Run SonarQube analysis
-        if: ${{ secrets.SONAR_TOKEN != '' && secrets.SONAR_HOST_URL != '' && secrets.SONAR_PROJECT_KEY != '' }}
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+        if: ${{ env.SONAR_TOKEN != '' && env.SONAR_HOST_URL != '' && env.SONAR_PROJECT_KEY != '' && env.SONAR_ORGANIZATION != '' }}
         run: |
           ./gradlew sonar \
             -Dsonar.host.url="$SONAR_HOST_URL" \
             -Dsonar.token="$SONAR_TOKEN" \
             -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
+            -Dsonar.organization="$SONAR_ORGANIZATION" \
             -Dsonar.projectName="subpilot"
