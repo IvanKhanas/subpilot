@@ -5,6 +5,9 @@ ktlint = "13.1.0"
 sonarqube = "7.2.3.7755"
 jackson-module-kotlin = "3.0.4"
 kotlin-logging = "7.0.3"
+mockk = "1.14.2"
+wiremock = "3.13.0"
+datafaker = "2.4.2"
 
 [libraries]
 spring-boot-bom = { group = "org.springframework.boot", name = "spring-boot-dependencies", version.ref = "spring-boot" }
@@ -15,6 +18,9 @@ kotlin-test-junit5 = { group = "org.jetbrains.kotlin", name = "kotlin-test-junit
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
 jackson-module-kotlin = { group = "tools.jackson.module", name = "jackson-module-kotlin", version.ref = "jackson-module-kotlin" }
 kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", version.ref = "kotlin-logging" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+wiremock = { group = "org.wiremock", name = "wiremock-standalone", version.ref = "wiremock" }
+datafaker = { group = "net.datafaker", name = "datafaker", version.ref = "datafaker" }
 
 [bundles]
 spring-boot-base = ["spring-boot-starter-web", "kotlin-reflect"]
