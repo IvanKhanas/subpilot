@@ -75,6 +75,10 @@ jobs:
     container:
       image: debian:12-slim
     needs: test
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
 
     steps:
       - name: Install base tools
@@ -101,11 +105,7 @@ jobs:
         run: ./gradlew ktlintCheck
 
       - name: Run SonarQube analysis
-        if: ${{ secrets.SONAR_TOKEN != '' && secrets.SONAR_HOST_URL != '' && secrets.SONAR_PROJECT_KEY != '' }}
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+        if: ${{ env.SONAR_TOKEN != '' && env.SONAR_HOST_URL != '' && env.SONAR_PROJECT_KEY != '' }}
         run: |
           ./gradlew sonar \
             -Dsonar.host.url="$SONAR_HOST_URL" \
