@@ -16,14 +16,9 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     container:
-      image: debian:12-slim
+      image: cimg/openjdk:21.0
 
     steps:
-      - name: Install base tools
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends libc6 git
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -44,15 +39,10 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     container:
-      image: debian:12-slim
+      image: cimg/openjdk:21.0
     needs: build
 
     steps:
-      - name: Install base tools
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends libc6 git
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -73,7 +63,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     container:
-      image: debian:12-slim
+      image: cimg/openjdk:21.0
     needs: test
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -81,11 +71,6 @@ jobs:
       SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
 
     steps:
-      - name: Install base tools
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends libc6 git
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
