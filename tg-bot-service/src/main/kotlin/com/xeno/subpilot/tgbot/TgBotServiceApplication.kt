@@ -1,4 +1,4 @@
-package org.example.subpilot.tgbot
+package com.xeno.subpilot.tgbot
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
