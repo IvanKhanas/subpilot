@@ -33,7 +33,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build (without lint/tests)
-        run: ./gradlew build -x test -x ktlintCheck
+        run: ./gradlew build -x check
 
   test:
     name: Test
