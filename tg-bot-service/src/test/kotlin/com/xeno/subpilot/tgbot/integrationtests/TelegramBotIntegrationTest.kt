@@ -15,6 +15,7 @@ import com.xeno.subpilot.tgbot.dto.Chat
 import com.xeno.subpilot.tgbot.dto.Message
 import com.xeno.subpilot.tgbot.dto.Update
 import com.xeno.subpilot.tgbot.dto.User
+import com.xeno.subpilot.tgbot.runtime.TelegramLongPollingService
 import com.xeno.subpilot.tgbot.runtime.TelegramMessageHandler
 import com.xeno.subpilot.tgbot.ux.buttons.ChatTextButtonHandler
 import kotlin.random.Random
@@ -26,9 +27,13 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class TelegramBotIntegrationTest {
+
+    @MockitoBean
+    private lateinit var longPollingService: TelegramLongPollingService
 
     companion object {
 
