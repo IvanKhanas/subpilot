@@ -6,6 +6,7 @@ data class SendMessageRequest(
     val chatId: Long,
     val text: String,
     val replyMarkup: ReplyMarkup? = null,
+    val parseMode: String? = null,
 )
 
 data class InlineKeyboardMarkup(
@@ -20,6 +21,10 @@ data class InlineKeyboardButton(
 data class ReplyKeyboardMarkup(
     val keyboard: List<List<KeyboardButton>>,
     val resizeKeyboard: Boolean = true,
+) : ReplyMarkup
+
+data class ReplyKeyboardRemove(
+    val removeKeyboard: Boolean = true,
 ) : ReplyMarkup
 
 data class KeyboardButton(
@@ -37,4 +42,15 @@ data class SetMyCommandsRequest(
 data class BotCommandInfo(
     val command: String,
     val description: String,
+)
+
+data class DeleteMessageRequest(
+    val chatId: Long,
+    val messageId: Long,
+)
+
+data class EditMessageTextRequest(
+    val chatId: Long,
+    val messageId: Long,
+    val text: String,
 )

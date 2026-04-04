@@ -14,6 +14,18 @@ interface TelegramClient {
         chatId: Long,
         text: String,
         replyMarkup: ReplyMarkup? = null,
+        parseMode: String? = null,
+    ): Long?
+
+    fun editMessage(
+        chatId: Long,
+        messageId: Long,
+        text: String,
+    )
+
+    fun deleteMessage(
+        chatId: Long,
+        messageId: Long,
     )
 
     fun answerCallbackQuery(callbackQueryId: String)
