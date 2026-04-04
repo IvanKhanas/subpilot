@@ -1,36 +1,41 @@
 package com.xeno.subpilot.tgbot.ux.buttons
 
-import com.xeno.subpilot.tgbot.dto.InlineKeyboardButton
-import com.xeno.subpilot.tgbot.dto.InlineKeyboardMarkup
 import com.xeno.subpilot.tgbot.dto.KeyboardButton
 import com.xeno.subpilot.tgbot.dto.ReplyKeyboardMarkup
+import com.xeno.subpilot.tgbot.ux.AiProvider
 
 object BotButtons {
 
-    const val START_CHAT = "start_chat"
-    const val HELP = "help"
-
-    const val BTN_CHAT = "Start chat"
-    const val BTN_HELP = "Help"
-
-    val startChatButton = InlineKeyboardButton(text = "Start chat", callbackData = START_CHAT)
-    val helpButton = InlineKeyboardButton(text = "Help", callbackData = HELP)
-
-    val welcomeInlineKeyboard =
-        InlineKeyboardMarkup(
-            inlineKeyboard =
-                listOf(
-                    listOf(startChatButton),
-                    listOf(helpButton),
-                ),
-        )
+    const val BTN_START_CHAT = "\uD83D\uDE80Start chat"
+    const val BTN_CHOOSE_MODEL = "\uD83E\uDD16Choose model"
+    const val BTN_HELP = "ℹ\uFE0FHelp"
+    const val BTN_BACK = "⏪Back"
+    const val BTN_MAIN_MENU = "\uD83C\uDFE0Main menu"
 
     val mainMenu =
         ReplyKeyboardMarkup(
             keyboard =
                 listOf(
-                    listOf(KeyboardButton(text = BTN_CHAT)),
-                    listOf(KeyboardButton(text = BTN_HELP)),
+                    listOf(KeyboardButton(BTN_START_CHAT)),
+                    listOf(KeyboardButton(BTN_CHOOSE_MODEL), KeyboardButton(BTN_HELP)),
+                ),
+        )
+
+    val providerMenu =
+        ReplyKeyboardMarkup(
+            keyboard =
+                listOf(
+                    AiProvider.entries.map { KeyboardButton(it.displayName) },
+                    listOf(KeyboardButton(BTN_BACK), KeyboardButton(BTN_MAIN_MENU)),
+                ),
+        )
+
+    fun modelMenu(provider: AiProvider) =
+        ReplyKeyboardMarkup(
+            keyboard =
+                listOf(
+                    provider.models.map { KeyboardButton(it.displayName) },
+                    listOf(KeyboardButton(BTN_BACK), KeyboardButton(BTN_MAIN_MENU)),
                 ),
         )
 }
