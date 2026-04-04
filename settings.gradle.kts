@@ -1,5 +1,7 @@
 rootProject.name = "subpilot"
 
+include("proto")
+include("migrations")
 include("tg-bot-service")
 include("chat-service")
 include("subscription-service")

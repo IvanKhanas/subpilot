@@ -8,11 +8,26 @@ kotlin-logging = "7.0.3"
 mockk = "1.14.2"
 wiremock = "3.13.0"
 datafaker = "2.4.2"
+spring-grpc = "1.0.2"
+grpc = "1.77.1"
+protobuf = "4.33.4"
+grpc-kotlin = "1.5.0"
+protobuf-plugin = "0.9.6"
+openai = "4.30.0"
+coroutines = "1.9.0"
+javax-annotation = "1.3.2"
+commonmark = "0.24.0"
+jsoup = "1.18.3"
+testcontainers = "1.20.6"
 
 [libraries]
 spring-boot-bom = { group = "org.springframework.boot", name = "spring-boot-dependencies", version.ref = "spring-boot" }
 spring-boot-starter-web = { group = "org.springframework.boot", name = "spring-boot-starter-web" }
+spring-boot-starter-data-jpa = { group = "org.springframework.boot", name = "spring-boot-starter-data-jpa" }
 spring-boot-starter-test = { group = "org.springframework.boot", name = "spring-boot-starter-test" }
+postgresql = { group = "org.postgresql", name = "postgresql" }
+liquibase-core = { group = "org.liquibase", name = "liquibase-core" }
+spring-boot-starter-data-redis = { group = "org.springframework.boot", name = "spring-boot-starter-data-redis" }
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect" }
 kotlin-test-junit5 = { group = "org.jetbrains.kotlin", name = "kotlin-test-junit5" }
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
@@ -21,6 +36,22 @@ kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", versi
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 wiremock = { group = "org.wiremock", name = "wiremock-standalone", version.ref = "wiremock" }
 datafaker = { group = "net.datafaker", name = "datafaker", version.ref = "datafaker" }
+spring-grpc-bom = { group = "org.springframework.grpc", name = "spring-grpc-dependencies", version.ref = "spring-grpc" }
+spring-grpc-starter = { group = "org.springframework.grpc", name = "spring-grpc-spring-boot-starter" }
+spring-grpc-test = { group = "org.springframework.grpc", name = "spring-grpc-test" }
+grpc-kotlin-stub = { group = "io.grpc", name = "grpc-kotlin-stub", version.ref = "grpc-kotlin" }
+grpc-protobuf = { group = "io.grpc", name = "grpc-protobuf", version.ref = "grpc" }
+grpc-stub = { group = "io.grpc", name = "grpc-stub", version.ref = "grpc" }
+protobuf-kotlin = { group = "com.google.protobuf", name = "protobuf-kotlin", version.ref = "protobuf" }
+openai = { group = "com.openai", name = "openai-java", version.ref = "openai" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+javax-annotation-api = { group = "javax.annotation", name = "javax.annotation-api", version.ref = "javax-annotation" }
+commonmark = { group = "org.commonmark", name = "commonmark", version.ref = "commonmark" }
+jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
+testcontainers-bom = { group = "org.testcontainers", name = "testcontainers-bom", version.ref = "testcontainers" }
+testcontainers = { group = "org.testcontainers", name = "testcontainers" }
+testcontainers-junit5 = { group = "org.testcontainers", name = "junit-jupiter" }
 
 [bundles]
 spring-boot-base = ["spring-boot-starter-web", "kotlin-reflect"]
@@ -32,3 +63,5 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
+protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
+kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }

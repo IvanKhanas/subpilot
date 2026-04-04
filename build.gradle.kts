@@ -1,3 +1,4 @@
+import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
@@ -9,6 +10,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.spring) apply false
     alias(libs.plugins.ktlint) apply false
+    alias(libs.plugins.protobuf) apply false
 }
 
 allprojects {
@@ -32,6 +34,12 @@ subprojects {
     }
 
     plugins.withId("java") {
+        extensions.configure<JavaPluginExtension> {
+            toolchain {
+                languageVersion.set(JavaLanguageVersion.of(21))
+            }
+        }
+
         tasks.withType<Test>().configureEach {
             useJUnitPlatform()
         }
