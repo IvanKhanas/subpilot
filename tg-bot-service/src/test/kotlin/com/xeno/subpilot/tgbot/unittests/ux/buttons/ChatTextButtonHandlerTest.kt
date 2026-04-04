@@ -3,11 +3,12 @@ package com.xeno.subpilot.tgbot.unittests.ux.buttons
 import com.xeno.subpilot.tgbot.client.TelegramClient
 import com.xeno.subpilot.tgbot.dto.Chat
 import com.xeno.subpilot.tgbot.dto.Message
+import com.xeno.subpilot.tgbot.message.BotResponses
 import com.xeno.subpilot.tgbot.ux.buttons.BotButtons
 import com.xeno.subpilot.tgbot.ux.buttons.ChatTextButtonHandler
+import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import io.mockk.justRun
 import io.mockk.verify
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -28,8 +29,8 @@ class ChatTextButtonHandlerTest {
     }
 
     @Test
-    fun `supports returns true for BTN_CHAT text`() {
-        Assertions.assertTrue(handler.supports(BotButtons.BTN_CHAT))
+    fun `supports returns true for BTN_START_CHAT text`() {
+        Assertions.assertTrue(handler.supports(BotButtons.BTN_START_CHAT))
     }
 
     @Test
@@ -43,21 +44,20 @@ class ChatTextButtonHandlerTest {
     }
 
     @Test
-    fun `handle sends default message to correct chat id`() {
+    fun `handle sends chat prompt to correct chat id`() {
         val message =
             Message(
                 chat = Chat(id = 42L),
-                text = BotButtons.BTN_CHAT,
+                text = BotButtons.BTN_START_CHAT,
             )
-
-        justRun { telegramClient.sendMessage(any(), any(), any()) }
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
 
         handler.handle(message)
 
         verify {
             telegramClient.sendMessage(
                 chatId = 42L,
-                text = ChatTextButtonHandler.Companion.DEFAULT_MESSAGE,
+                text = BotResponses.CHAT_PROMPT_RESPONSE.text,
             )
         }
     }
@@ -67,14 +67,13 @@ class ChatTextButtonHandlerTest {
         val message =
             Message(
                 chat = Chat(id = 1L),
-                text = BotButtons.BTN_CHAT,
+                text = BotButtons.BTN_START_CHAT,
             )
-
-        justRun { telegramClient.sendMessage(any(), any(), any()) }
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
 
         handler.handle(message)
 
-        verify(exactly = 1) { telegramClient.sendMessage(any(), any(), any()) }
+        verify(exactly = 1) { telegramClient.sendMessage(any(), any(), any(), any()) }
     }
 
     @Test
@@ -82,10 +81,9 @@ class ChatTextButtonHandlerTest {
         val message =
             Message(
                 chat = Chat(id = 999999L),
-                text = BotButtons.BTN_CHAT,
+                text = BotButtons.BTN_START_CHAT,
             )
-
-        justRun { telegramClient.sendMessage(any(), any(), any()) }
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
 
         handler.handle(message)
 

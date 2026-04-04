@@ -36,5 +36,6 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.spring.grpc.test)
     testImplementation(libs.kotlinx.coroutines.test)
+    testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly(libs.junit.platform.launcher)
 }
