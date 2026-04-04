@@ -1,0 +1,40 @@
+include:
+  - infra/docker-compose.yml
+
+services:
+  chat-service:
+    build:
+      context: .
+      dockerfile: chat-service/Dockerfile
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      CHAT_DB_URL: jdbc:postgresql://postgres:5432/${CHAT_DB_NAME:-chat}
+      CHAT_DB_USER: ${CHAT_DB_USER}
+      CHAT_DB_PASSWORD: ${CHAT_DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - "8082:8082"
+      - "9090:9090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  tg-bot-service:
+    build:
+      context: .
+      dockerfile: tg-bot-service/Dockerfile
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      CHAT_GRPC_ADDRESS: chat-service:9090
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      redis:
+        condition: service_healthy
+      chat-service:
+        condition: service_started
