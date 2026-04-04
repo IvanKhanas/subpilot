@@ -7,4 +7,5 @@ data class TelegramBotProperties(
     val token: String,
     val pollingTimeout: Int,
     val baseUrl: String = "https://api.telegram.org",
+    val pollingRetryDelayMs: Long = 5_000,
 )
