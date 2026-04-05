@@ -6,11 +6,25 @@ spring:
     default-property-inclusion: non_null
     deserialization:
       fail-on-unknown-properties: false
+  grpc:
+    client:
+      channels:
+        chat-service:
+          address: ${CHAT_GRPC_ADDRESS:localhost:9090}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
 
 telegram:
   bot:
     token: ${TELEGRAM_BOT_TOKEN}
     polling-timeout: ${TELEGRAM_POLLING_TIMEOUT:30}
+    polling-retry-delay-ms: ${TELEGRAM_POLLING_RETRY_DELAY_MS:5000}
+
+navigation:
+  stack-ttl: ${CHAT_HISTORY_TTL:PT20M}
 
 server:
   port: ${TELEGRAM_BOT_SERVER_PORT:1991}

@@ -3,14 +3,23 @@ package com.xeno.subpilot.tgbot.runtime
 import com.xeno.subpilot.tgbot.client.TelegramClient
 import com.xeno.subpilot.tgbot.command.BotCommand
 import com.xeno.subpilot.tgbot.dto.BotCommandInfo
+import com.xeno.subpilot.tgbot.dto.Update
 import com.xeno.subpilot.tgbot.properties.TelegramBotProperties
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.annotation.PreDestroy
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
+
+import java.util.concurrent.atomic.AtomicLong
+
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 private val logger = KotlinLogging.logger {}
 
@@ -21,10 +30,8 @@ class TelegramLongPollingService(
     private val botCommands: List<BotCommand>,
     private val properties: TelegramBotProperties,
 ) {
-
-    private val running = AtomicBoolean(false)
+    private val scope = CoroutineScope(Dispatchers.IO)
     private val offset = AtomicLong(0)
-    private var pollingThread: Thread? = null
 
     @EventListener(ApplicationReadyEvent::class)
     fun start() {
@@ -35,8 +42,7 @@ class TelegramLongPollingService(
     @PreDestroy
     fun stop() {
         logger.info { "Stopping Telegram long-polling" }
-        running.set(false)
-        pollingThread?.interrupt()
+        scope.cancel()
     }
 
     private fun registerCommands() {
@@ -49,39 +55,59 @@ class TelegramLongPollingService(
                     )
                 }
             telegramClient.setMyCommands(commands)
-            logger.info { "Registered ${commands.size} bot commands: ${commands.map { it.command }}" }
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to register bot commands" }
+            logger.info {
+                "Registered ${commands.size} bot commands: ${commands.map { it.command }}"
+            }
+        } catch (ex: Exception) {
+            logger.atError {
+                message = "telegram_register_commands_failed"
+                cause = ex
+            }
         }
     }
 
     private fun startPolling() {
-        if (!running.compareAndSet(false, true)) return
         logger.info { "Starting Telegram long-polling" }
-
-        pollingThread =
-            Thread.ofVirtual().name("tg-polling").start {
-                while (running.get()) {
-                    try {
-                        val currentOffset = offset.get().takeIf { it > 0 }
-                        val updates = telegramClient.getUpdates(currentOffset, properties.pollingTimeout)
-
-                        for (update in updates) {
-                            offset.set(update.updateId + 1)
-                            try {
-                                messageHandler.onUpdate(update)
-                            } catch (e: Exception) {
-                                logger.error(e) { "Error handling update ${update.updateId}" }
-                            }
-                        }
-                    } catch (e: InterruptedException) {
-                        Thread.currentThread().interrupt()
-                        break
-                    } catch (e: Exception) {
-                        logger.error(e) { "Polling error, retrying in 5s" }
-                        Thread.sleep(5_000)
+        scope.launch {
+            while (isActive) {
+                try {
+                    pollOnce()
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    logger.atWarn {
+                        message = "telegram_polling_error"
+                        cause = ex
+                        payload = mapOf("retry_delay_ms" to properties.pollingRetryDelayMs)
                     }
+                    delay(properties.pollingRetryDelayMs)
                 }
             }
+        }
+    }
+
+    private suspend fun pollOnce() {
+        val updates =
+            telegramClient.getUpdates(
+                offset.get().takeIf { it > 0 },
+                properties.pollingTimeout,
+            )
+
+        updates.forEach { update ->
+            offset.set(update.updateId + 1)
+            handleUpdate(update)
+        }
+    }
+
+    private fun handleUpdate(update: Update) {
+        try {
+            messageHandler.onUpdate(update)
+        } catch (ex: Exception) {
+            logger.atError {
+                message = "telegram_update_handling_failed"
+                cause = ex
+                payload = mapOf("update_id" to update.updateId)
+            }
+        }
     }
 }

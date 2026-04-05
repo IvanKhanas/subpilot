@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: chat-service
+  datasource:
+    url: ${CHAT_DB_URL:jdbc:postgresql://localhost:5432/chat}
+    username: ${CHAT_DB_USER:chat}
+    password: ${CHAT_DB_PASSWORD:chat}
+  jpa:
+    open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/chat/db.changelog-master.yaml
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  grpc:
+    server:
+      port: ${CHAT_GRPC_SERVER_PORT:9090}
+
+openai:
+  api-key: ${OPENAI_API_KEY}
+  default-model: ${OPENAI_DEFAULT_MODEL:gpt-4o-mini}
+
+chat:
+  history:
+    max-messages: ${CHAT_HISTORY_MAX_MESSAGES:20}
+    ttl: ${CHAT_HISTORY_TTL:PT20M}
+
+server:
+  port: ${CHAT_SERVER_PORT:8082}

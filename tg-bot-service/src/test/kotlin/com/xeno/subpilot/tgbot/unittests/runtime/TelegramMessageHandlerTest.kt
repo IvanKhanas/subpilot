@@ -57,7 +57,7 @@ class TelegramMessageHandlerTest {
         handler =
             TelegramMessageHandler(
                 botCommands = listOf(startCommand, helpCommand),
-                callbackHandlers = mapOf("start_chat" to startChatCallback, "help" to helpCallback),
+                callbackHandlers = listOf(startChatCallback, helpCallback),
                 textButtonHandlers = listOf(chatTextButton, helpTextButton),
                 messageHandler = messageHandler,
                 telegramClient = telegramClient,
@@ -69,6 +69,7 @@ class TelegramMessageHandlerTest {
         val callback = CallbackQuery(id = "cb-1", from = User(id = 42), data = "start_chat")
         val update = Update(updateId = 1, callbackQuery = callback)
 
+        every { startChatCallback.supports("start_chat") } returns true
         justRun { startChatCallback.handle(callback) }
         justRun { telegramClient.answerCallbackQuery("cb-1") }
 
@@ -83,6 +84,8 @@ class TelegramMessageHandlerTest {
         val callback = CallbackQuery(id = "cb-2", from = User(id = 42), data = "unknown_action")
         val update = Update(updateId = 2, callbackQuery = callback)
 
+        every { startChatCallback.supports("unknown_action") } returns false
+        every { helpCallback.supports("unknown_action") } returns false
         justRun { telegramClient.answerCallbackQuery("cb-2") }
 
         handler.onUpdate(update)

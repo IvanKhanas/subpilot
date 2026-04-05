@@ -1,21 +1,19 @@
 package com.xeno.subpilot.tgbot.ux.buttons
 
-import com.xeno.subpilot.tgbot.client.TelegramClient
-import com.xeno.subpilot.tgbot.command.CommandResponses
+import com.xeno.subpilot.tgbot.command.HelpCommandHandler
 import com.xeno.subpilot.tgbot.dto.Message
+import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 
 @Component
+@Order(1)
 class HelpTextButtonHandler(
-    private val telegramClient: TelegramClient,
+    private val helpCommandHandler: HelpCommandHandler,
 ) : TextButtonHandler {
 
-    override fun supports(text: String): Boolean = text == BotButtons.BTN_HELP
+    override fun supports(text: String) = text == BotButtons.BTN_HELP
 
     override fun handle(message: Message) {
-        telegramClient.sendMessage(
-            message.chat.id,
-            CommandResponses.HELP_RESPONSE.text,
-        )
+        helpCommandHandler.handle(message)
     }
 }

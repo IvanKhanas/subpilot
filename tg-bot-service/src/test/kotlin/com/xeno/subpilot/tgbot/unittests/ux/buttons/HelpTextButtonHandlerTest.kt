@@ -1,7 +1,6 @@
 package com.xeno.subpilot.tgbot.unittests.ux.buttons
 
-import com.xeno.subpilot.tgbot.client.TelegramClient
-import com.xeno.subpilot.tgbot.command.CommandResponses
+import com.xeno.subpilot.tgbot.command.HelpCommandHandler
 import com.xeno.subpilot.tgbot.dto.Chat
 import com.xeno.subpilot.tgbot.dto.Message
 import com.xeno.subpilot.tgbot.ux.buttons.BotButtons
@@ -20,13 +19,13 @@ import org.junit.jupiter.api.extension.ExtendWith
 class HelpTextButtonHandlerTest {
 
     @MockK
-    lateinit var telegramClient: TelegramClient
+    lateinit var helpCommandHandler: HelpCommandHandler
 
     private lateinit var handler: HelpTextButtonHandler
 
     @BeforeEach
     fun setUp() {
-        handler = HelpTextButtonHandler(telegramClient)
+        handler = HelpTextButtonHandler(helpCommandHandler)
     }
 
     @Test
@@ -40,18 +39,12 @@ class HelpTextButtonHandlerTest {
     }
 
     @Test
-    fun `handle sends help response to chat`() {
+    fun `handle delegates to HelpCommandHandler`() {
         val message = Message(chat = Chat(id = 111), text = BotButtons.BTN_HELP)
-        justRun { telegramClient.sendMessage(any(), any(), any()) }
+        justRun { helpCommandHandler.handle(message) }
 
         handler.handle(message)
 
-        verify(exactly = 1) {
-            telegramClient.sendMessage(
-                chatId = 111,
-                text = CommandResponses.HELP_RESPONSE.text,
-                replyMarkup = null,
-            )
-        }
+        verify(exactly = 1) { helpCommandHandler.handle(message) }
     }
 }

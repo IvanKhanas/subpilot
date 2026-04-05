@@ -4,8 +4,21 @@ spring:
     default-property-inclusion: non_null
     deserialization:
       fail-on-unknown-properties: false
+  grpc:
+    client:
+      channels:
+        chat-service:
+          address: localhost:9090
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ""
 
 telegram:
   bot:
     token: test-token
     polling-timeout: 1
+
+navigation:
+  stack-ttl: PT20M

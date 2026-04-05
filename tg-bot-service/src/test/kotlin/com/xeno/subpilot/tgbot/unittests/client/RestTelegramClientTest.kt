@@ -3,6 +3,7 @@ package com.xeno.subpilot.tgbot.unittests.client
 import com.xeno.subpilot.tgbot.client.RestTelegramClient
 import com.xeno.subpilot.tgbot.dto.AnswerCallbackQueryRequest
 import com.xeno.subpilot.tgbot.dto.BotCommandInfo
+import com.xeno.subpilot.tgbot.dto.Message
 import com.xeno.subpilot.tgbot.dto.ReplyKeyboardMarkup
 import com.xeno.subpilot.tgbot.dto.SendMessageRequest
 import com.xeno.subpilot.tgbot.dto.SetMyCommandsRequest
@@ -23,6 +24,7 @@ import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.client.RestClient
+import org.springframework.web.client.RestClientException
 
 @ExtendWith(MockKExtension::class)
 class RestTelegramClientTest {
@@ -54,6 +56,9 @@ class RestTelegramClientTest {
         every { requestBodySpec.body(any<SetMyCommandsRequest>()) } returns requestBodySpec
         every { requestBodySpec.retrieve() } returns responseSpec
         every { responseSpec.toBodilessEntity() } returns ResponseEntity.ok().build()
+        every {
+            responseSpec.body(any<ParameterizedTypeReference<TelegramResponse<Message>>>())
+        } returns null
     }
 
     @Test
@@ -87,7 +92,7 @@ class RestTelegramClientTest {
 
     @Test
     fun `getUpdates returns empty when api call throws exception`() {
-        every { restClient.post() } throws RuntimeException("boom")
+        every { restClient.post() } throws RestClientException("boom")
 
         val result = client.getUpdates(offset = 1, timeout = 10)
 
@@ -128,21 +133,21 @@ class RestTelegramClientTest {
 
     @Test
     fun `sendMessage does not throw when api call fails`() {
-        every { requestBodySpec.retrieve() } throws RuntimeException("boom")
+        every { requestBodySpec.retrieve() } throws RestClientException("boom")
 
         client.sendMessage(chatId = 1, text = "text")
     }
 
     @Test
     fun `answerCallbackQuery does not throw when api call fails`() {
-        every { requestBodySpec.retrieve() } throws RuntimeException("boom")
+        every { requestBodySpec.retrieve() } throws RestClientException("boom")
 
         client.answerCallbackQuery("cb")
     }
 
     @Test
     fun `setMyCommands does not throw when api call fails`() {
-        every { requestBodySpec.retrieve() } throws RuntimeException("boom")
+        every { requestBodySpec.retrieve() } throws RestClientException("boom")
 
         client.setMyCommands(listOf(BotCommandInfo(command = "help", description = "Help")))
     }

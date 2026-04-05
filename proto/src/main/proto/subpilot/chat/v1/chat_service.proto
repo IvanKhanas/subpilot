@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package subpilot.chat.v1;
+
+option java_package = "com.xeno.subpilot.proto.chat.v1";
+option java_multiple_files = true;
+
+service ChatService {
+  rpc ProcessMessage(ProcessMessageRequest) returns (ProcessMessageResponse);
+  rpc SetModel(SetModelRequest) returns (SetModelResponse);
+}
+
+message ProcessMessageRequest {
+  int64 user_id = 1;
+  string text = 2;
+  int64 chat_id = 3;
+}
+
+message ProcessMessageResponse {
+  string text = 1;
+}
+
+message SetModelRequest {
+  int64 chat_id = 1;
+  string model = 2;
+}
+
+message SetModelResponse {}

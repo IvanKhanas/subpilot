@@ -1,12 +1,15 @@
 package com.xeno.subpilot.tgbot.unittests.command
 
 import com.xeno.subpilot.tgbot.client.TelegramClient
-import com.xeno.subpilot.tgbot.command.CommandResponses
 import com.xeno.subpilot.tgbot.command.StartCommandHandler
 import com.xeno.subpilot.tgbot.dto.Chat
 import com.xeno.subpilot.tgbot.dto.Message
 import com.xeno.subpilot.tgbot.dto.User
-import com.xeno.subpilot.tgbot.ux.buttons.BotButtons
+import com.xeno.subpilot.tgbot.message.BotResponses
+import com.xeno.subpilot.tgbot.ux.BotScreen
+import com.xeno.subpilot.tgbot.ux.NavigationService
+import com.xeno.subpilot.tgbot.ux.ScreenRenderer
+import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.justRun
@@ -22,119 +25,111 @@ class StartCommandHandlerTest {
     @MockK
     lateinit var telegramClient: TelegramClient
 
+    @MockK
+    lateinit var navigationService: NavigationService
+
+    @MockK
+    lateinit var screenRenderer: ScreenRenderer
+
     private lateinit var startCommandHandler: StartCommandHandler
 
     @BeforeEach
     fun setUp() {
-        startCommandHandler = StartCommandHandler(telegramClient)
+        startCommandHandler = StartCommandHandler(telegramClient, navigationService, screenRenderer)
     }
 
     @Test
-    fun `return standard user name when username is null`() {
-        val message =
-            Message(
-                chat = Chat(id = 1),
-                from = null,
-                text = "/start",
-            )
-
-        justRun { telegramClient.sendMessage(any(), any(), any()) }
+    fun `uses default username when from is null`() {
+        val message = Message(chat = Chat(id = 1), from = null, text = "/start")
+        justRun { navigationService.clear(any()) }
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
+        justRun { screenRenderer.render(any(), any()) }
 
         startCommandHandler.handle(message)
 
         verify {
             telegramClient.sendMessage(
                 chatId = 1,
-                text = CommandResponses.START_RESPONSE.format(StartCommandHandler.DEFAULT_USERNAME),
-                replyMarkup = BotButtons.mainMenu,
+                text = BotResponses.START_RESPONSE.format(StartCommandHandler.DEFAULT_USERNAME),
             )
         }
     }
 
     @Test
     fun `uses firstName if present`() {
-        val user = User(id = 1, firstName = "Mike")
-
         val message =
-            Message(
-                chat = Chat(id = 1),
-                from = user,
-                text = "/start",
-            )
-
-        justRun { telegramClient.sendMessage(any(), any(), any()) }
+            Message(chat = Chat(id = 1), from = User(id = 1, firstName = "Mike"), text = "/start")
+        justRun { navigationService.clear(any()) }
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
+        justRun { screenRenderer.render(any(), any()) }
 
         startCommandHandler.handle(message)
 
         verify {
             telegramClient.sendMessage(
                 chatId = 1,
-                text = CommandResponses.START_RESPONSE.format("Mike"),
-                replyMarkup = BotButtons.mainMenu,
+                text = BotResponses.START_RESPONSE.format("Mike"),
             )
         }
     }
 
     @Test
     fun `uses default username when from exists but firstName is null`() {
-        val user = User(id = 1, firstName = null)
-
         val message =
-            Message(
-                chat = Chat(id = 1),
-                from = user,
-                text = "/start",
-            )
-
-        justRun { telegramClient.sendMessage(any(), any(), any()) }
+            Message(chat = Chat(id = 1), from = User(id = 1, firstName = null), text = "/start")
+        justRun { navigationService.clear(any()) }
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
+        justRun { screenRenderer.render(any(), any()) }
 
         startCommandHandler.handle(message)
 
         verify {
             telegramClient.sendMessage(
                 chatId = 1,
-                text = CommandResponses.START_RESPONSE.format(StartCommandHandler.DEFAULT_USERNAME),
-                replyMarkup = BotButtons.mainMenu,
+                text = BotResponses.START_RESPONSE.format(StartCommandHandler.DEFAULT_USERNAME),
             )
         }
     }
 
     @Test
-    fun `sends message to message chat id`() {
+    fun `clears navigation stack on start`() {
+        val message = Message(chat = Chat(id = 42), from = User(id = 1), text = "/start")
+        justRun { navigationService.clear(any()) }
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
+        justRun { screenRenderer.render(any(), any()) }
+
+        startCommandHandler.handle(message)
+
+        verify { navigationService.clear(42) }
+    }
+
+    @Test
+    fun `renders main menu after greeting`() {
+        val message = Message(chat = Chat(id = 42), from = User(id = 1), text = "/start")
+        justRun { navigationService.clear(any()) }
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
+        justRun { screenRenderer.render(any(), any()) }
+
+        startCommandHandler.handle(message)
+
+        verify { screenRenderer.render(42, BotScreen.MAIN_MENU) }
+    }
+
+    @Test
+    fun `sends message to correct chat id`() {
         val message =
             Message(
                 chat = Chat(id = 987654321L),
                 from = User(id = 1, firstName = "Mike"),
                 text = "/start",
             )
-
-        justRun { telegramClient.sendMessage(any(), any(), any()) }
-
-        startCommandHandler.handle(message)
-
-        verify {
-            telegramClient.sendMessage(
-                chatId = 987654321L,
-                text = any(),
-                replyMarkup = any(),
-            )
-        }
-    }
-
-    @Test
-    fun `calls telegramClient sendMessage exactly once`() {
-        val message =
-            Message(
-                chat = Chat(id = 1),
-                from = User(id = 1, firstName = "Mike"),
-                text = "/start",
-            )
-
-        justRun { telegramClient.sendMessage(any(), any(), any()) }
+        justRun { navigationService.clear(any()) }
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
+        justRun { screenRenderer.render(any(), any()) }
 
         startCommandHandler.handle(message)
 
-        verify(exactly = 1) { telegramClient.sendMessage(any(), any(), any()) }
+        verify { telegramClient.sendMessage(chatId = 987654321L, text = any()) }
     }
 
     @Test

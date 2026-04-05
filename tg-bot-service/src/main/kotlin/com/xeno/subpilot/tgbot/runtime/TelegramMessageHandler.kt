@@ -16,7 +16,7 @@ private val logger = KotlinLogging.logger {}
 @Component
 class TelegramMessageHandler(
     botCommands: List<BotCommand>,
-    private val callbackHandlers: Map<String, CallbackHandler>,
+    private val callbackHandlers: List<CallbackHandler>,
     private val textButtonHandlers: List<TextButtonHandler>,
     private val messageHandler: MessageHandler,
     private val telegramClient: TelegramClient,
@@ -32,14 +32,20 @@ class TelegramMessageHandler(
     }
 
     private fun handleCallback(callback: CallbackQuery) {
-        val data = callback.data
-        logger.debug { "Callback query from userId=${callback.from?.id} data=$data" }
+        val data = callback.data ?: return
+        logger.atDebug {
+            message = "telegram_callback_received"
+            payload = mapOf("user_id" to callback.from?.id, "data" to data)
+        }
 
-        val handler = callbackHandlers[data]
+        val handler = callbackHandlers.find { it.supports(data) }
         if (handler != null) {
             handler.handle(callback)
         } else {
-            logger.debug { "Unknown callback data=$data" }
+            logger.atDebug {
+                message = "telegram_callback_unhandled"
+                payload = mapOf("data" to data)
+            }
         }
 
         telegramClient.answerCallbackQuery(callback.id)
@@ -47,10 +53,16 @@ class TelegramMessageHandler(
 
     private fun handleMessage(message: Message) {
         val text = message.text ?: return
-
         when {
             text.startsWith("/") -> handleCommand(message, text)
-            else -> handleTextButton(message, text)
+            else -> {
+                val buttonHandler = textButtonHandlers.find { it.supports(text) }
+                if (buttonHandler != null) {
+                    buttonHandler.handle(message)
+                } else {
+                    messageHandler.handle(message)
+                }
+            }
         }
     }
 
@@ -61,23 +73,16 @@ class TelegramMessageHandler(
         val command = text.split(" ", "@").first().lowercase()
         val handler = commandHandlers[command]
         if (handler != null) {
-            logger.debug { "Command=$command from userId=${message.from?.id}" }
+            logger.atDebug {
+                this.message = "telegram_command_received"
+                payload = mapOf("command" to command, "user_id" to message.from?.id)
+            }
             handler.handle(message)
         } else {
-            logger.debug { "Unknown command=$command from userId=${message.from?.id}" }
-        }
-    }
-
-    private fun handleTextButton(
-        message: Message,
-        text: String,
-    ) {
-        val buttonHandler = textButtonHandlers.find { it.supports(text) }
-        if (buttonHandler != null) {
-            logger.debug { "Text button='$text' from userId=${message.from?.id}" }
-            buttonHandler.handle(message)
-        } else {
-            messageHandler.handle(message)
+            logger.atDebug {
+                this.message = "telegram_command_unhandled"
+                payload = mapOf("command" to command, "user_id" to message.from?.id)
+            }
         }
     }
 }

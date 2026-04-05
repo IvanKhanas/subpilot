@@ -2,6 +2,7 @@ package com.xeno.subpilot.tgbot.command
 
 import com.xeno.subpilot.tgbot.client.TelegramClient
 import com.xeno.subpilot.tgbot.dto.Message
+import com.xeno.subpilot.tgbot.message.BotResponses
 import org.springframework.stereotype.Component
 
 @Component
@@ -15,7 +16,7 @@ class HelpCommandHandler(
     override fun handle(message: Message) {
         telegramClient.sendMessage(
             chatId = message.chat.id,
-            text = CommandResponses.HELP_RESPONSE.text,
+            text = BotResponses.HELP_RESPONSE.text,
         )
     }
 }
