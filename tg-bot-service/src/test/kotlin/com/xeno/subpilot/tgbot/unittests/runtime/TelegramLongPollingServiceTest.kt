@@ -87,4 +87,18 @@ class TelegramLongPollingServiceTest {
         verify(timeout = 1500) { messageHandler.onUpdate(update) }
         verify(timeout = 1500) { telegramClient.getUpdates(6, 15) }
     }
+
+    @Test
+    fun `polling continues after exception thrown by message handler`() {
+        val badUpdate = Update(updateId = 1, message = Message(chat = Chat(id = 1), text = "bad"))
+        val goodUpdate = Update(updateId = 2, message = Message(chat = Chat(id = 1), text = "good"))
+        every { telegramClient.getUpdates(null, 15) } returns listOf(badUpdate)
+        every { telegramClient.getUpdates(2, 15) } returns listOf(goodUpdate)
+        every { telegramClient.getUpdates(3, 15) } throws InterruptedException()
+        every { messageHandler.onUpdate(badUpdate) } throws RuntimeException("crash!")
+
+        service.start()
+
+        verify(timeout = 2000) { messageHandler.onUpdate(goodUpdate) }
+    }
 }
