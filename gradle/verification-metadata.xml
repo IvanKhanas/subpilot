@@ -4,9 +4,7 @@
       <verify-metadata>true</verify-metadata>
       <verify-signatures>false</verify-signatures>
       <trusted-artifacts>
-         <trust group="org.jetbrains.kotlinx" regex="true"/>
-         <trust group="org.junit" regex="true"/>
-         <trust group="tools.jackson" regex="true"/>
+         <trust regex="true" artifact=".*\.(module|pom)$"/>
       </trusted-artifacts>
    </configuration>
    <components>
