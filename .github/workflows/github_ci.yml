@@ -38,8 +38,6 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    container:
-      image: cimg/openjdk:21.0
     needs: build
 
     steps:
