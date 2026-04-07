@@ -4,7 +4,8 @@
       <verify-metadata>true</verify-metadata>
       <verify-signatures>false</verify-signatures>
       <trusted-artifacts>
-         <trust regex="true" artifact=".*\.(module|pom)$"/>
+         <trust file=".*\.module" regex="true"/>
+         <trust file=".*\.pom" regex="true"/>
       </trusted-artifacts>
    </configuration>
    <components>
