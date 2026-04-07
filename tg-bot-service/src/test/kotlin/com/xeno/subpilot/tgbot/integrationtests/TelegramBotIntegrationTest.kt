@@ -118,7 +118,6 @@ class TelegramBotIntegrationTest {
 
         messageHandler.onUpdate(messageUpdate(chatId, "/start"))
 
-        // /start sends 2 messages: greeting + main menu render
         wireMock.verify(
             2,
             postRequestedFor(urlPathEqualTo(sendMessagePath()))

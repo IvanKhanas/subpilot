@@ -3,6 +3,8 @@ package com.xeno.subpilot.tgbot.unittests.client
 import com.xeno.subpilot.tgbot.client.RestTelegramClient
 import com.xeno.subpilot.tgbot.dto.AnswerCallbackQueryRequest
 import com.xeno.subpilot.tgbot.dto.BotCommandInfo
+import com.xeno.subpilot.tgbot.dto.DeleteMessageRequest
+import com.xeno.subpilot.tgbot.dto.EditMessageTextRequest
 import com.xeno.subpilot.tgbot.dto.Message
 import com.xeno.subpilot.tgbot.dto.ReplyKeyboardMarkup
 import com.xeno.subpilot.tgbot.dto.SendMessageRequest
@@ -54,6 +56,8 @@ class RestTelegramClientTest {
         every { requestBodySpec.body(any<SendMessageRequest>()) } returns requestBodySpec
         every { requestBodySpec.body(any<AnswerCallbackQueryRequest>()) } returns requestBodySpec
         every { requestBodySpec.body(any<SetMyCommandsRequest>()) } returns requestBodySpec
+        every { requestBodySpec.body(any<EditMessageTextRequest>()) } returns requestBodySpec
+        every { requestBodySpec.body(any<DeleteMessageRequest>()) } returns requestBodySpec
         every { requestBodySpec.retrieve() } returns responseSpec
         every { responseSpec.toBodilessEntity() } returns ResponseEntity.ok().build()
         every {
@@ -150,5 +154,44 @@ class RestTelegramClientTest {
         every { requestBodySpec.retrieve() } throws RestClientException("boom")
 
         client.setMyCommands(listOf(BotCommandInfo(command = "help", description = "Help")))
+    }
+
+    @Test
+    fun `editMessage posts payload to editMessageText endpoint`() {
+        val bodySlot: CapturingSlot<EditMessageTextRequest> = slot()
+        every { requestBodySpec.body(capture(bodySlot)) } returns requestBodySpec
+
+        client.editMessage(chatId = 42, messageId = 7, text = "updated")
+
+        assertEquals(42L, bodySlot.captured.chatId)
+        assertEquals(7L, bodySlot.captured.messageId)
+        assertEquals("updated", bodySlot.captured.text)
+        verify { requestBodyUriSpec.uri("/editMessageText") }
+    }
+
+    @Test
+    fun `editMessage does not throw when api call fails`() {
+        every { requestBodySpec.retrieve() } throws RestClientException("boom")
+
+        client.editMessage(chatId = 1, messageId = 2, text = "text")
+    }
+
+    @Test
+    fun `deleteMessage posts payload to deleteMessage endpoint`() {
+        val bodySlot: CapturingSlot<DeleteMessageRequest> = slot()
+        every { requestBodySpec.body(capture(bodySlot)) } returns requestBodySpec
+
+        client.deleteMessage(chatId = 55, messageId = 3)
+
+        assertEquals(55L, bodySlot.captured.chatId)
+        assertEquals(3L, bodySlot.captured.messageId)
+        verify { requestBodyUriSpec.uri("/deleteMessage") }
+    }
+
+    @Test
+    fun `deleteMessage does not throw when api call fails`() {
+        every { requestBodySpec.retrieve() } throws RestClientException("boom")
+
+        client.deleteMessage(chatId = 1, messageId = 2)
     }
 }
