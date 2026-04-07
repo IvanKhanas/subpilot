@@ -3,6 +3,10 @@
    <configuration>
       <verify-metadata>true</verify-metadata>
       <verify-signatures>false</verify-signatures>
+      <trusted-artifacts>
+         <trust group="com.google.protobuf" name="protoc" regex="true" artifact=".*\.(exe|zip)$"/>
+         <trust group="io.grpc" name="protoc-gen-grpc-java" regex="true" artifact=".*\.exe$"/>
+      </trusted-artifacts>
    </configuration>
    <components>
       <component group="biz.aQute.bnd" name="biz.aQute.bnd.annotation" version="7.1.0">
