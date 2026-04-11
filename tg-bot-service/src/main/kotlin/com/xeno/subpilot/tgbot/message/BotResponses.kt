@@ -36,6 +36,22 @@ enum class BotResponses(
     AI_UNAVAILABLE_RESPONSE(
         "Sorry, the AI service is currently unavailable. Please try again later.",
     ),
+
+    QUOTA_EXCEEDED_RESPONSE(
+        "You've used all your free requests. Subscribe to continue using the bot.",
+    ),
+
+    NO_SUBSCRIPTION_RESPONSE(
+        "This model requires an active subscription.",
+    ),
+
+    ACCESS_BLOCKED_RESPONSE(
+        "Your access has been restricted. Please contact support.",
+    ),
+
+    MODEL_SET_FAILED_RESPONSE(
+        "Failed to set model. Please try again later.",
+    ),
     ;
 
     fun format(vararg args: Any): String = text.format(*args)
