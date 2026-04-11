@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package subpilot.subscription.v1;
+
+option java_package = "com.xeno.subpilot.proto.subscription.v1";
+option java_multiple_files = true;
+
+service SubscriptionService {
+  rpc CheckAccess(CheckAccessRequest) returns (CheckAccessResponse);
+  rpc RefundAccess(RefundAccessRequest) returns (RefundAccessResponse);
+  rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
+  rpc GetModelPreference(GetModelPreferenceRequest) returns (GetModelPreferenceResponse);
+  rpc SetModelPreference(SetModelPreferenceRequest) returns (SetModelPreferenceResponse);
+}
+
+message CheckAccessRequest {
+  int64 user_id = 1;
+  string model_id = 2;
+}
+
+message CheckAccessResponse {
+  bool allowed = 1;
+  DenialReason denial_reason = 2;
+}
+
+message RefundAccessRequest {
+  int64 user_id = 1;
+  string model_id = 2;
+}
+
+message RefundAccessResponse {}
+
+message RegisterUserRequest {
+  int64 user_id = 1;
+}
+
+message RegisterUserResponse {}
+
+message GetModelPreferenceRequest {
+  int64 user_id = 1;
+}
+
+message GetModelPreferenceResponse {
+  string model_id = 1;
+}
+
+message SetModelPreferenceRequest {
+  int64 user_id = 1;
+  string model_id = 2;
+}
+
+message SetModelPreferenceResponse {}
+
+enum DenialReason {
+  DENIAL_REASON_UNSPECIFIED = 0;
+  QUOTA_EXHAUSTED = 1;
+  NO_SUBSCRIPTION = 2;
+  BLOCKED = 3;
+}
