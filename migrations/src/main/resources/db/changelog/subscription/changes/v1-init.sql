@@ -14,15 +14,20 @@ CREATE TABLE subscription_user
 CREATE TABLE user_subscription
 (
     id              BIGSERIAL   NOT NULL PRIMARY KEY,
+    payment_id      UUID        NOT NULL,
     user_id         BIGINT      NOT NULL,
     plan_id         VARCHAR(50) NOT NULL,
     provider        VARCHAR(50) NOT NULL,
     earned_requests INTEGER     NOT NULL,
     activated_at    TIMESTAMP   NOT NULL,
+    CONSTRAINT uq_user_subscription_payment_id UNIQUE (payment_id),
     CONSTRAINT fk_user_subscription_subscription_user
         FOREIGN KEY (user_id) REFERENCES subscription_user (user_id),
     CONSTRAINT chk_user_subscription_earned_requests CHECK (earned_requests > 0)
 );
+
+--changeset xeno:v1-create-user-subscription-user-id-index
+CREATE INDEX idx_user_subscription_user_id ON user_subscription (user_id);
 
 --changeset xeno:v1-create-user-request-balance
 CREATE TABLE user_request_balance
