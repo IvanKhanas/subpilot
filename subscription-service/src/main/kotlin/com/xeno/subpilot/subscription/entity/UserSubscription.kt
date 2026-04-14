@@ -8,6 +8,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 
 import java.time.Instant
+import java.util.UUID
 
 @Entity
 @Table(name = "user_subscription")
@@ -15,6 +16,9 @@ class UserSubscription(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
+
+    @Column(name = "payment_id", nullable = false, unique = true)
+    val paymentId: UUID,
 
     @Column(name = "user_id", nullable = false)
     val userId: Long,
