@@ -17,14 +17,18 @@ import com.xeno.subpilot.proto.subscription.v1.getModelPreferenceResponse
 import com.xeno.subpilot.proto.subscription.v1.refundAccessResponse
 import com.xeno.subpilot.proto.subscription.v1.registerUserResponse
 import com.xeno.subpilot.proto.subscription.v1.setModelPreferenceResponse
+import com.xeno.subpilot.subscription.dto.DenialReason as ServiceDenialReason
+import com.xeno.subpilot.subscription.properties.SubscriptionProperties
 import com.xeno.subpilot.subscription.service.AccessService
 import com.xeno.subpilot.subscription.service.ModelPreferenceService
 import com.xeno.subpilot.subscription.service.UserService
-import com.xeno.subpilot.subscription.service.DenialReason as ServiceDenialReason
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.grpc.server.service.GrpcService
+
+import java.time.ZoneOffset
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.springframework.grpc.server.service.GrpcService
 
 private val logger = KotlinLogging.logger {}
 
@@ -33,6 +37,7 @@ class SubscriptionGrpcService(
     private val accessService: AccessService,
     private val userService: UserService,
     private val modelPreferenceService: ModelPreferenceService,
+    private val subscriptionProperties: SubscriptionProperties,
 ) : SubscriptionServiceGrpcKt.SubscriptionServiceCoroutineImplBase() {
 
     override suspend fun refundAccess(request: RefundAccessRequest): RefundAccessResponse {
@@ -41,7 +46,12 @@ class SubscriptionGrpcService(
             payload = mapOf("user_id" to request.userId, "model_id" to request.modelId)
         }
         withContext(Dispatchers.IO) {
-            accessService.refund(request.userId, request.modelId)
+            accessService.refund(
+                request.userId,
+                request.modelId,
+                request.freeConsumed,
+                request.paidConsumed,
+            )
         }
         return refundAccessResponse { }
     }
@@ -51,12 +61,20 @@ class SubscriptionGrpcService(
             message = "grpc_check_access"
             payload = mapOf("user_id" to request.userId, "model_id" to request.modelId)
         }
-        val result = withContext(Dispatchers.IO) {
-            accessService.checkAndConsume(request.userId, request.modelId)
-        }
+        val result =
+            withContext(Dispatchers.IO) {
+                accessService.checkAndConsume(request.userId, request.modelId)
+            }
         return checkAccessResponse {
             allowed = result.allowed
             denialReason = result.denialReason.toProto()
+            availableRequests = result.availableRequests
+            modelCost = result.modelCost
+            freeConsumed = result.freeConsumed
+            paidConsumed = result.paidConsumed
+            if (result.resetAt != null) {
+                resetAtEpoch = result.resetAt.toEpochSecond(ZoneOffset.UTC)
+            }
         }
     }
 
@@ -65,34 +83,45 @@ class SubscriptionGrpcService(
             message = "grpc_register_user"
             payload = mapOf("user_id" to request.userId)
         }
-        withContext(Dispatchers.IO) {
-            userService.registerUser(request.userId)
+        val isNew =
+            withContext(Dispatchers.IO) {
+                userService.registerUser(request.userId)
+            }
+        return registerUserResponse {
+            this.isNew = isNew
+            freeQuota = subscriptionProperties.freeQuota
+            freeModelId = subscriptionProperties.defaultModel
         }
-        return registerUserResponse { }
     }
 
-    override suspend fun getModelPreference(request: GetModelPreferenceRequest): GetModelPreferenceResponse {
+    override suspend fun getModelPreference(
+        request: GetModelPreferenceRequest,
+    ): GetModelPreferenceResponse {
         logger.atDebug {
             message = "grpc_get_model_preference"
             payload = mapOf("user_id" to request.userId)
         }
-        val modelId = withContext(Dispatchers.IO) {
-            modelPreferenceService.getModelPreference(request.userId)
-        }
+        val modelId =
+            withContext(Dispatchers.IO) {
+                modelPreferenceService.getModelPreference(request.userId)
+            }
         return getModelPreferenceResponse {
             if (modelId != null) this.modelId = modelId
         }
     }
 
-    override suspend fun setModelPreference(request: SetModelPreferenceRequest): SetModelPreferenceResponse {
+    override suspend fun setModelPreference(
+        request: SetModelPreferenceRequest,
+    ): SetModelPreferenceResponse {
         logger.atDebug {
             message = "grpc_set_model_preference"
             payload = mapOf("user_id" to request.userId, "model_id" to request.modelId)
         }
-        withContext(Dispatchers.IO) {
-            modelPreferenceService.setModelPreference(request.userId, request.modelId)
-        }
-        return setModelPreferenceResponse { }
+        val providerChanged =
+            withContext(Dispatchers.IO) {
+                modelPreferenceService.setModelPreference(request.userId, request.modelId)
+            }
+        return setModelPreferenceResponse { this.providerChanged = providerChanged }
     }
 
     private fun ServiceDenialReason.toProto(): DenialReason =

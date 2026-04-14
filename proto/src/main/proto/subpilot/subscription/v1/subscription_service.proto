@@ -21,11 +21,18 @@ message CheckAccessRequest {
 message CheckAccessResponse {
   bool allowed = 1;
   DenialReason denial_reason = 2;
+  int32 available_requests = 3;
+  int64 reset_at_epoch = 4;
+  int32 model_cost = 5;
+  int32 free_consumed = 6;
+  int32 paid_consumed = 7;
 }
 
 message RefundAccessRequest {
   int64 user_id = 1;
   string model_id = 2;
+  int32 free_consumed = 3;
+  int32 paid_consumed = 4;
 }
 
 message RefundAccessResponse {}
@@ -34,7 +41,11 @@ message RegisterUserRequest {
   int64 user_id = 1;
 }
 
-message RegisterUserResponse {}
+message RegisterUserResponse {
+   bool is_new = 1;
+   int32 free_quota = 2;
+   string free_model_id = 3;
+}
 
 message GetModelPreferenceRequest {
   int64 user_id = 1;
@@ -49,7 +60,9 @@ message SetModelPreferenceRequest {
   string model_id = 2;
 }
 
-message SetModelPreferenceResponse {}
+message SetModelPreferenceResponse {
+  bool provider_changed = 1;
+}
 
 enum DenialReason {
   DENIAL_REASON_UNSPECIFIED = 0;
