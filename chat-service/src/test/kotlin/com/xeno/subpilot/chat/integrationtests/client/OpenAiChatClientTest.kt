@@ -22,6 +22,7 @@ import org.junit.jupiter.api.extension.RegisterExtension
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 
 class OpenAiChatClientTest {
@@ -71,6 +72,7 @@ class OpenAiChatClientTest {
             OpenAiChatClient(
                 openAiClient,
                 OpenAiProperties(apiKey = "test-key", maxCompletionTokens = 1000),
+                UnconfinedTestDispatcher(),
             )
     }
 

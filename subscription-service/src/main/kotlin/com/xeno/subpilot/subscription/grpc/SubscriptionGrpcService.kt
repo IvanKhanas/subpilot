@@ -27,7 +27,8 @@ import org.springframework.grpc.server.service.GrpcService
 
 import java.time.ZoneOffset
 
-import kotlinx.coroutines.Dispatchers
+import kotlin.coroutines.CoroutineContext
+
 import kotlinx.coroutines.withContext
 
 private val logger = KotlinLogging.logger {}
@@ -38,6 +39,7 @@ class SubscriptionGrpcService(
     private val userService: UserService,
     private val modelPreferenceService: ModelPreferenceService,
     private val subscriptionProperties: SubscriptionProperties,
+    private val ioDispatcher: CoroutineContext,
 ) : SubscriptionServiceGrpcKt.SubscriptionServiceCoroutineImplBase() {
 
     override suspend fun refundAccess(request: RefundAccessRequest): RefundAccessResponse {
@@ -45,7 +47,7 @@ class SubscriptionGrpcService(
             message = "grpc_refund_access"
             payload = mapOf("user_id" to request.userId, "model_id" to request.modelId)
         }
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             accessService.refund(
                 request.userId,
                 request.modelId,
@@ -62,7 +64,7 @@ class SubscriptionGrpcService(
             payload = mapOf("user_id" to request.userId, "model_id" to request.modelId)
         }
         val result =
-            withContext(Dispatchers.IO) {
+            withContext(ioDispatcher) {
                 accessService.checkAndConsume(request.userId, request.modelId)
             }
         return checkAccessResponse {
@@ -84,7 +86,7 @@ class SubscriptionGrpcService(
             payload = mapOf("user_id" to request.userId)
         }
         val isNew =
-            withContext(Dispatchers.IO) {
+            withContext(ioDispatcher) {
                 userService.registerUser(request.userId)
             }
         return registerUserResponse {
@@ -102,7 +104,7 @@ class SubscriptionGrpcService(
             payload = mapOf("user_id" to request.userId)
         }
         val modelId =
-            withContext(Dispatchers.IO) {
+            withContext(ioDispatcher) {
                 modelPreferenceService.getModelPreference(request.userId)
             }
         return getModelPreferenceResponse {
@@ -118,7 +120,7 @@ class SubscriptionGrpcService(
             payload = mapOf("user_id" to request.userId, "model_id" to request.modelId)
         }
         val providerChanged =
-            withContext(Dispatchers.IO) {
+            withContext(ioDispatcher) {
                 modelPreferenceService.setModelPreference(request.userId, request.modelId)
             }
         return setModelPreferenceResponse { this.providerChanged = providerChanged }

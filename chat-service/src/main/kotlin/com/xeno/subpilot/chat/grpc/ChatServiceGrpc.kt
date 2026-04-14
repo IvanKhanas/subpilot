@@ -14,7 +14,8 @@ import com.xeno.subpilot.proto.subscription.v1.CheckAccessResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.grpc.server.service.GrpcService
 
-import kotlinx.coroutines.Dispatchers
+import kotlin.coroutines.CoroutineContext
+
 import kotlinx.coroutines.withContext
 
 private val logger = KotlinLogging.logger {}
@@ -24,6 +25,7 @@ class ChatServiceGrpc(
     private val openAiChatClient: OpenAiChatClient,
     private val chatHistoryService: ChatHistoryService,
     private val subscriptionGrpcClient: SubscriptionGrpcClient,
+    private val ioDispatcher: CoroutineContext,
 ) : ChatServiceGrpcKt.ChatServiceCoroutineImplBase() {
 
     override suspend fun processMessage(request: ProcessMessageRequest): ProcessMessageResponse {
@@ -60,13 +62,13 @@ class ChatServiceGrpc(
     ): ProcessMessageResponse {
         try {
             val history =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     chatHistoryService.getHistory(request.chatId)
                 }
 
             val aiText = openAiChatClient.chat(history, request.text, model)
 
-            withContext(Dispatchers.IO) {
+            withContext(ioDispatcher) {
                 chatHistoryService.append(request.chatId, request.text, aiText)
             }
 
@@ -91,7 +93,7 @@ class ChatServiceGrpc(
             message = "grpc_clear_history"
             payload = mapOf("chat_id" to request.chatId)
         }
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             chatHistoryService.clear(request.chatId)
         }
         return clearHistoryResponse { }

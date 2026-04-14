@@ -31,6 +31,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 
 @ExtendWith(MockKExtension::class)
@@ -60,7 +61,13 @@ class SubscriptionGrpcServiceTest {
     @BeforeEach
     fun setUp() {
         service =
-            SubscriptionGrpcService(accessService, userService, modelPreferenceService, properties)
+            SubscriptionGrpcService(
+                accessService,
+                userService,
+                modelPreferenceService,
+                properties,
+                UnconfinedTestDispatcher(),
+            )
     }
 
     @Test

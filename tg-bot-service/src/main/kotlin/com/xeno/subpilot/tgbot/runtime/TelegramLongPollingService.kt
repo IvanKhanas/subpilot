@@ -13,9 +13,10 @@ import org.springframework.stereotype.Service
 
 import java.util.concurrent.atomic.AtomicLong
 
+import kotlin.coroutines.CoroutineContext
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -29,8 +30,9 @@ class TelegramLongPollingService(
     private val messageHandler: TelegramMessageHandler,
     private val botCommands: List<BotCommand>,
     private val properties: TelegramBotProperties,
+    private val ioDispatcher: CoroutineContext,
 ) {
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(ioDispatcher)
     private val offset = AtomicLong(0)
 
     @EventListener(ApplicationReadyEvent::class)

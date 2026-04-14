@@ -26,6 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 import kotlin.test.assertEquals
 
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 
 @ExtendWith(MockKExtension::class)
@@ -52,6 +53,7 @@ class ChatServiceGrpcTest {
                 openAiChatClient,
                 chatHistoryService,
                 subscriptionGrpcClient,
+                UnconfinedTestDispatcher(),
             )
     }
 
