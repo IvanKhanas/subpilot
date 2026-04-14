@@ -20,6 +20,7 @@ javax-annotation = "1.3.2"
 commonmark = "0.24.0"
 jsoup = "1.18.3"
 testcontainers = "1.20.6"
+yookassa = "1.0.9"
 
 [libraries]
 spring-boot-bom = { group = "org.springframework.boot", name = "spring-boot-dependencies", version.ref = "spring-boot" }
@@ -56,6 +57,9 @@ testcontainers-bom = { group = "org.testcontainers", name = "testcontainers-bom"
 testcontainers = { group = "org.testcontainers", name = "testcontainers" }
 testcontainers-junit5 = { group = "org.testcontainers", name = "junit-jupiter" }
 testcontainers-postgresql = { group = "org.testcontainers", name = "postgresql" }
+testcontainers-kafka = { group = "org.testcontainers", name = "kafka" }
+spring-kafka = { group = "org.springframework.kafka", name = "spring-kafka" }
+yookassa = { group = "space.dynomake", name = "yookassa-java-sdk", version.ref = "yookassa" }
 
 [bundles]
 spring-boot-base = ["spring-boot-starter-web", "kotlin-reflect"]
