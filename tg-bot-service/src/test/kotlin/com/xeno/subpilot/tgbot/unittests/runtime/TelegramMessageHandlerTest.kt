@@ -7,6 +7,7 @@ import com.xeno.subpilot.tgbot.dto.Chat
 import com.xeno.subpilot.tgbot.dto.Message
 import com.xeno.subpilot.tgbot.dto.Update
 import com.xeno.subpilot.tgbot.dto.User
+import com.xeno.subpilot.tgbot.message.BotResponses
 import com.xeno.subpilot.tgbot.message.CallbackHandler
 import com.xeno.subpilot.tgbot.message.MessageHandler
 import com.xeno.subpilot.tgbot.runtime.TelegramMessageHandler
@@ -120,14 +121,21 @@ class TelegramMessageHandlerTest {
     }
 
     @Test
-    fun `ignores unknown command without error`() {
+    fun `sends unknown command response for unrecognized command`() {
         val message = message("/unknown")
         val update = Update(updateId = 5, message = message)
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
 
         handler.onUpdate(update)
 
         verify(exactly = 0) { startCommand.handle(any()) }
         verify(exactly = 0) { helpCommand.handle(any()) }
+        verify {
+            telegramClient.sendMessage(
+                chatId = 100,
+                text = BotResponses.UNKNOWN_COMMAND_RESPONSE.text,
+            )
+        }
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.xeno.subpilot.tgbot.command.BotCommand
 import com.xeno.subpilot.tgbot.dto.CallbackQuery
 import com.xeno.subpilot.tgbot.dto.Message
 import com.xeno.subpilot.tgbot.dto.Update
+import com.xeno.subpilot.tgbot.message.BotResponses
 import com.xeno.subpilot.tgbot.message.CallbackHandler
 import com.xeno.subpilot.tgbot.message.MessageHandler
 import com.xeno.subpilot.tgbot.ux.buttons.TextButtonHandler
@@ -72,6 +73,7 @@ class TelegramMessageHandler(
     ) {
         val command = text.split(" ", "@").first().lowercase()
         val handler = commandHandlers[command]
+
         if (handler != null) {
             logger.atDebug {
                 this.message = "telegram_command_received"
@@ -79,8 +81,13 @@ class TelegramMessageHandler(
             }
             handler.handle(message)
         } else {
+            telegramClient.sendMessage(
+                chatId = message.chat.id,
+                BotResponses.UNKNOWN_COMMAND_RESPONSE.text,
+            )
+
             logger.atDebug {
-                this.message = "telegram_command_unhandled"
+                this.message = "unknown_telegram_command_handled"
                 payload = mapOf("command" to command, "user_id" to message.from?.id)
             }
         }

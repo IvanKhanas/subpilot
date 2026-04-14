@@ -2,8 +2,9 @@ package com.xeno.subpilot.tgbot.unittests.client
 
 import com.xeno.subpilot.proto.chat.v1.ChatServiceGrpcKt
 import com.xeno.subpilot.proto.chat.v1.ProcessMessageResponse
-import com.xeno.subpilot.proto.chat.v1.SetModelResponse
 import com.xeno.subpilot.tgbot.client.ChatGrpcClient
+import com.xeno.subpilot.tgbot.client.GrpcRetry
+import com.xeno.subpilot.tgbot.config.GrpcRetryProperties
 import com.xeno.subpilot.tgbot.exception.ChatServiceException
 import io.grpc.Status
 import io.grpc.StatusException
@@ -27,11 +28,11 @@ class ChatGrpcClientTest {
 
     @BeforeEach
     fun setUp() {
-        client = ChatGrpcClient(stub)
+        client = ChatGrpcClient(stub, GrpcRetry(GrpcRetryProperties(maxAttempts = 1)))
     }
 
     @Test
-    fun `processMessage returns text from gRPC response`() {
+    fun `processMessage returns response from gRPC`() {
         coEvery { stub.processMessage(any(), any()) } returns
             ProcessMessageResponse
                 .newBuilder()
@@ -40,7 +41,7 @@ class ChatGrpcClientTest {
 
         val result = client.processMessage(userId = 1L, chatId = 2L, text = "hello")
 
-        assertEquals("AI response", result)
+        assertEquals("AI response", result.text)
     }
 
     @Test
@@ -49,22 +50,6 @@ class ChatGrpcClientTest {
 
         assertThrows<ChatServiceException> {
             client.processMessage(userId = 1L, chatId = 2L, text = "hello")
-        }
-    }
-
-    @Test
-    fun `setModel completes without exception on success`() {
-        coEvery { stub.setModel(any(), any()) } returns SetModelResponse.newBuilder().build()
-
-        client.setModel(chatId = 1L, model = "gpt-4o")
-    }
-
-    @Test
-    fun `setModel throws ChatServiceException on StatusException`() {
-        coEvery { stub.setModel(any(), any()) } throws StatusException(Status.UNAVAILABLE)
-
-        assertThrows<ChatServiceException> {
-            client.setModel(chatId = 1L, model = "gpt-4o")
         }
     }
 }

@@ -95,7 +95,7 @@ class TelegramLongPollingService(
 
         updates.forEach { update ->
             offset.set(update.updateId + 1)
-            handleUpdate(update)
+            scope.launch { handleUpdate(update) }
         }
     }
 
