@@ -3,6 +3,7 @@ import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
+import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     alias(libs.plugins.sonarqube)
@@ -48,6 +49,16 @@ subprojects {
 
         tasks.withType<Test>().configureEach {
             useJUnitPlatform()
+        }
+    }
+
+    plugins.withId("jacoco") {
+        tasks.withType<JacocoReport>().configureEach {
+            reports {
+                xml.required.set(true)
+                html.required.set(true)
+                csv.required.set(false)
+            }
         }
     }
 }

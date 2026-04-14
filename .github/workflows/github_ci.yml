@@ -54,8 +54,19 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Run Tests
-        run: ./gradlew test
+      - name: Run tests and generate JaCoCo reports
+        run: ./gradlew test jacocoTestReport
+
+      - name: Upload JaCoCo XML reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-xml-reports
+          if-no-files-found: error
+          path: |
+            chat-service/build/reports/jacoco/test/jacocoTestReport.xml
+            subscription-service/build/reports/jacoco/test/jacocoTestReport.xml
+            tg-bot-service/build/reports/jacoco/test/jacocoTestReport.xml
+            payment-service/build/reports/jacoco/test/jacocoTestReport.xml
 
   lint:
     name: Lint
@@ -85,6 +96,12 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Download JaCoCo XML reports
+        uses: actions/download-artifact@v5
+        with:
+          name: jacoco-xml-reports
+          path: coverage-reports
+
       - name: Run Ktlint
         run: ./gradlew ktlintCheck
 
@@ -96,4 +113,5 @@ jobs:
             -Dsonar.token="$SONAR_TOKEN" \
             -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
             -Dsonar.organization="$SONAR_ORGANIZATION" \
-            -Dsonar.projectName="subpilot"
+            -Dsonar.projectName="subpilot" \
+            -Dsonar.coverage.jacoco.xmlReportPaths="coverage-reports/**/jacocoTestReport.xml"
