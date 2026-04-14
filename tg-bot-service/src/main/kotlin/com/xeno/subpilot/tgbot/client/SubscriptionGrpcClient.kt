@@ -3,42 +3,64 @@ package com.xeno.subpilot.tgbot.client
 import com.xeno.subpilot.proto.subscription.v1.SubscriptionServiceGrpcKt
 import com.xeno.subpilot.proto.subscription.v1.registerUserRequest
 import com.xeno.subpilot.proto.subscription.v1.setModelPreferenceRequest
+import com.xeno.subpilot.tgbot.dto.RegistrationResult
 import com.xeno.subpilot.tgbot.exception.SubscriptionServiceException
+import com.xeno.subpilot.tgbot.ux.AiProvider
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.grpc.StatusException
-import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Component
+
+import kotlinx.coroutines.runBlocking
 
 private val logger = KotlinLogging.logger {}
 
 @Component
 class SubscriptionGrpcClient(
     private val stub: SubscriptionServiceGrpcKt.SubscriptionServiceCoroutineStub,
-) {
-    fun registerUser(userId: Long) {
+    private val grpcRetry: GrpcRetry,
+) : SubscriptionClient {
+    override fun registerUser(userId: Long): RegistrationResult? =
         try {
-            runBlocking {
-                stub.registerUser(registerUserRequest { this.userId = userId })
-            }
+            val response =
+                runBlocking {
+                    grpcRetry.retryOnUnavailable {
+                        stub.registerUser(registerUserRequest { this.userId = userId })
+                    }
+                }
+            val freeProvider =
+                AiProvider.findProviderByModelId(response.freeModelId)
+                    ?: error(
+                        "Unknown freeModelId from subscription-service: ${response.freeModelId}",
+                    )
+            RegistrationResult(
+                isNew = response.isNew,
+                freeQuota = response.freeQuota,
+                freeProvider = freeProvider,
+            )
         } catch (ex: StatusException) {
             logger.atWarn {
                 message = "subscription_register_user_failed"
                 cause = ex
                 payload = mapOf("user_id" to userId)
             }
+            null
         }
-    }
 
-    fun setModelPreference(
+    override fun setModelPreference(
         userId: Long,
         modelId: String,
-    ) {
+    ): Boolean {
         try {
-            runBlocking {
-                stub.setModelPreference(setModelPreferenceRequest {
-                    this.userId = userId
-                    this.modelId = modelId
-                })
+            return runBlocking {
+                grpcRetry.retryOnUnavailable {
+                    stub
+                        .setModelPreference(
+                            setModelPreferenceRequest {
+                                this.userId = userId
+                                this.modelId = modelId
+                            },
+                        ).providerChanged
+                }
             }
         } catch (ex: StatusException) {
             logger.atWarn {

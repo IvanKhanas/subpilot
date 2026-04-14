@@ -1,9 +1,11 @@
 package com.xeno.subpilot.tgbot
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan
 import org.springframework.boot.runApplication
 
 @SpringBootApplication
+@ConfigurationPropertiesScan
 class TgBotServiceApplication
 
 fun main(args: Array<String>) {

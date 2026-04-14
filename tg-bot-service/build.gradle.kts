@@ -31,6 +31,7 @@ dependencies {
     implementation(libs.jsoup)
 
     testImplementation(libs.bundles.spring.boot.test)
+    testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)
     testImplementation(libs.wiremock)
     testImplementation(libs.datafaker)
