@@ -12,6 +12,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockExtension
 import com.openai.client.okhttp.OpenAIOkHttpClient
 import com.xeno.subpilot.chat.client.OpenAiChatClient
 import com.xeno.subpilot.chat.exception.OpenAiException
+import com.xeno.subpilot.chat.properties.OpenAiProperties
 import com.xeno.subpilot.chat.service.ChatTurn
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -66,7 +67,11 @@ class OpenAiChatClientTest {
                 .baseUrl("http://localhost:${wireMock.port}")
                 .maxRetries(0)
                 .build()
-        client = OpenAiChatClient(openAiClient)
+        client =
+            OpenAiChatClient(
+                openAiClient,
+                OpenAiProperties(apiKey = "test-key", maxCompletionTokens = 1000),
+            )
     }
 
     @Test

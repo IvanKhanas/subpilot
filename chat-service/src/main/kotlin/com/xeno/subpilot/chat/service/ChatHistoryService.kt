@@ -1,6 +1,8 @@
 package com.xeno.subpilot.chat.service
 
 import com.xeno.subpilot.chat.properties.ChatHistoryProperties
+import org.springframework.data.redis.core.RedisOperations
+import org.springframework.data.redis.core.SessionCallback
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Service
 import tools.jackson.databind.ObjectMapper
@@ -23,17 +25,28 @@ class ChatHistoryService(
         assistantMessage: String,
     ) {
         val key = redisKey(chatId)
-        val ops = redis.opsForList()
-        ops.rightPush(
-            key,
-            objectMapper.writeValueAsString(ChatTurn(ChatTurn.Role.USER, userMessage)),
+        val userJson = objectMapper.writeValueAsString(ChatTurn(ChatTurn.Role.USER, userMessage))
+        val assistantJson =
+            objectMapper.writeValueAsString(
+                ChatTurn(ChatTurn.Role.ASSISTANT, assistantMessage),
+            )
+        redis.executePipelined(
+            object : SessionCallback<Any?> {
+                override fun <K : Any, V : Any> execute(ops: RedisOperations<K, V>): Any? {
+                    @Suppress("UNCHECKED_CAST")
+                    val stringOps = ops as RedisOperations<String, String>
+                    stringOps.opsForList().rightPush(key, userJson)
+                    stringOps.opsForList().rightPush(key, assistantJson)
+                    stringOps.opsForList().trim(key, -properties.maxMessages.toLong(), -1)
+                    stringOps.expire(key, properties.ttl)
+                    return null
+                }
+            },
         )
-        ops.rightPush(
-            key,
-            objectMapper.writeValueAsString(ChatTurn(ChatTurn.Role.ASSISTANT, assistantMessage)),
-        )
-        ops.trim(key, -properties.maxMessages.toLong(), -1)
-        redis.expire(key, properties.ttl)
+    }
+
+    fun clear(chatId: Long) {
+        redis.delete(redisKey(chatId))
     }
 
     private fun redisKey(chatId: Long) = "chat:history:$chatId"

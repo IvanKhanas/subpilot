@@ -15,8 +15,12 @@ private val logger = KotlinLogging.logger {}
 @Component
 class SubscriptionGrpcClient(
     private val stub: SubscriptionServiceGrpcKt.SubscriptionServiceCoroutineStub,
+    private val grpcRetry: GrpcRetry,
 ) {
-    suspend fun checkAccess(userId: Long, modelId: String): CheckAccessResponse =
+    suspend fun checkAccess(
+        userId: Long,
+        modelId: String,
+    ): CheckAccessResponse =
         try {
             stub.checkAccess(
                 checkAccessRequest {
@@ -30,17 +34,28 @@ class SubscriptionGrpcClient(
 
     suspend fun getModelPreference(userId: Long): String =
         try {
-            stub.getModelPreference(getModelPreferenceRequest { this.userId = userId }).modelId
+            grpcRetry.retryOnUnavailable {
+                stub.getModelPreference(getModelPreferenceRequest { this.userId = userId }).modelId
+            }
         } catch (ex: StatusException) {
             throw SubscriptionServiceException("Subscription service call failed: ${ex.status}", ex)
         }
 
-    suspend fun refundAccess(userId: Long, modelId: String) {
+    suspend fun refundAccess(
+        userId: Long,
+        modelId: String,
+        freeConsumed: Int,
+        paidConsumed: Int,
+    ) {
         try {
-            stub.refundAccess(refundAccessRequest {
-                this.userId = userId
-                this.modelId = modelId
-            })
+            stub.refundAccess(
+                refundAccessRequest {
+                    this.userId = userId
+                    this.modelId = modelId
+                    this.freeConsumed = freeConsumed
+                    this.paidConsumed = paidConsumed
+                },
+            )
         } catch (ex: StatusException) {
             logger.atWarn {
                 message = "subscription_refund_access_failed"

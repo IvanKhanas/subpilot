@@ -2,12 +2,14 @@ syntax = "proto3";
 
 package subpilot.chat.v1;
 
+import "subpilot/subscription/v1/subscription_service.proto";
+
 option java_package = "com.xeno.subpilot.proto.chat.v1";
 option java_multiple_files = true;
 
 service ChatService {
   rpc ProcessMessage(ProcessMessageRequest) returns (ProcessMessageResponse);
-  rpc SetModel(SetModelRequest) returns (SetModelResponse);
+  rpc ClearHistory(ClearHistoryRequest) returns (ClearHistoryResponse);
 }
 
 message ProcessMessageRequest {
@@ -18,11 +20,15 @@ message ProcessMessageRequest {
 
 message ProcessMessageResponse {
   string text = 1;
+  subpilot.subscription.v1.DenialReason denial_reason = 2;
+  string model_id = 3;
+  int32 available_requests = 4;
+  int64 reset_at_epoch = 5;
+  int32 model_cost = 6;
 }
 
-message SetModelRequest {
+message ClearHistoryRequest {
   int64 chat_id = 1;
-  string model = 2;
 }
 
-message SetModelResponse {}
+message ClearHistoryResponse {}
