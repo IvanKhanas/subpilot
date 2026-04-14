@@ -21,6 +21,11 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
+import java.util.concurrent.Executors
+
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
+import kotlinx.coroutines.asCoroutineDispatcher
+
 @ExtendWith(MockKExtension::class)
 class TelegramLongPollingServiceTest {
 
@@ -37,9 +42,11 @@ class TelegramLongPollingServiceTest {
     lateinit var helpCommand: BotCommand
 
     private lateinit var service: TelegramLongPollingService
+    private lateinit var ioDispatcher: ExecutorCoroutineDispatcher
 
     @BeforeEach
     fun setUp() {
+        ioDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
         every { startCommand.command } returns "/start"
         every { startCommand.description } returns "Start the bot"
         every { helpCommand.command } returns "/help"
@@ -53,12 +60,14 @@ class TelegramLongPollingServiceTest {
                 messageHandler = messageHandler,
                 botCommands = listOf(startCommand, helpCommand),
                 properties = TelegramBotProperties(token = "token", pollingTimeout = 15),
+                ioDispatcher = ioDispatcher,
             )
     }
 
     @AfterEach
     fun tearDown() {
         service.stop()
+        ioDispatcher.close()
     }
 
     @Test

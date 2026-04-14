@@ -1,14 +1,13 @@
 package com.xeno.subpilot.tgbot.client
 
+import com.xeno.subpilot.proto.chat.v1.ProcessMessageResponse
+
 interface ChatClient {
     fun processMessage(
         userId: Long,
         chatId: Long,
         text: String,
-    ): String
+    ): ProcessMessageResponse
 
-    fun setModel(
-        chatId: Long,
-        model: String,
-    )
+    fun clearHistory(chatId: Long)
 }

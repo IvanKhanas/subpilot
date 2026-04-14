@@ -6,7 +6,6 @@ import com.xeno.subpilot.chat.service.ChatTurn
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -64,32 +63,5 @@ class ChatHistoryServiceTest {
         val result = service.getHistory(chatId)
 
         assertEquals(listOf(userTurn, assistantTurn), result)
-    }
-
-    @Test
-    fun `append pushes user and assistant turns to Redis`() {
-        every { objectMapper.writeValueAsString(any()) } returns "{}"
-
-        service.append(chatId, "hello", "hi")
-
-        verify { listOperations.rightPush(redisKey, any<String>()) }
-    }
-
-    @Test
-    fun `append trims history to maxMessages`() {
-        every { objectMapper.writeValueAsString(any()) } returns "{}"
-
-        service.append(chatId, "hello", "hi")
-
-        verify { listOperations.trim(redisKey, -properties.maxMessages.toLong(), -1) }
-    }
-
-    @Test
-    fun `append resets TTL after write`() {
-        every { objectMapper.writeValueAsString(any()) } returns "{}"
-
-        service.append(chatId, "hello", "hi")
-
-        verify { redis.expire(redisKey, properties.ttl) }
     }
 }

@@ -22,3 +22,6 @@ telegram:
 
 navigation:
   stack-ttl: PT20M
+
+support:
+  operator-tag: "@test_support"

@@ -5,11 +5,13 @@ import com.openai.models.ChatModel
 import com.openai.models.chat.completions.ChatCompletion
 import com.openai.models.chat.completions.ChatCompletionCreateParams
 import com.xeno.subpilot.chat.exception.OpenAiException
+import com.xeno.subpilot.chat.properties.OpenAiProperties
 import com.xeno.subpilot.chat.service.ChatTurn
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 
-import kotlinx.coroutines.Dispatchers
+import kotlin.coroutines.CoroutineContext
+
 import kotlinx.coroutines.withContext
 
 private val logger = KotlinLogging.logger {}
@@ -17,6 +19,8 @@ private val logger = KotlinLogging.logger {}
 @Component
 class OpenAiChatClient(
     private val openAiClient: OpenAIClient,
+    private val openAiProperties: OpenAiProperties,
+    private val ioDispatcher: CoroutineContext,
 ) {
 
     suspend fun chat(
@@ -24,7 +28,7 @@ class OpenAiChatClient(
         userMessage: String,
         model: String,
     ): String =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             logger.atDebug {
                 message = "openai_request_sending"
                 payload = mapOf("model" to model, "history_size" to history.size)
@@ -42,6 +46,7 @@ class OpenAiChatClient(
         ChatCompletionCreateParams
             .builder()
             .model(ChatModel.of(model))
+            .maxCompletionTokens(openAiProperties.maxCompletionTokens)
             .apply {
                 history.forEach { turn ->
                     when (turn.role) {

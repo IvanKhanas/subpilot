@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package subpilot.subscription.v1;
+
+option java_package = "com.xeno.subpilot.proto.subscription.v1";
+option java_multiple_files = true;
+
+service SubscriptionService {
+  rpc CheckAccess(CheckAccessRequest) returns (CheckAccessResponse);
+  rpc RefundAccess(RefundAccessRequest) returns (RefundAccessResponse);
+  rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
+  rpc GetModelPreference(GetModelPreferenceRequest) returns (GetModelPreferenceResponse);
+  rpc SetModelPreference(SetModelPreferenceRequest) returns (SetModelPreferenceResponse);
+}
+
+message CheckAccessRequest {
+  int64 user_id = 1;
+  string model_id = 2;
+}
+
+message CheckAccessResponse {
+  bool allowed = 1;
+  DenialReason denial_reason = 2;
+  int32 available_requests = 3;
+  int64 reset_at_epoch = 4;
+  int32 model_cost = 5;
+  int32 free_consumed = 6;
+  int32 paid_consumed = 7;
+}
+
+message RefundAccessRequest {
+  int64 user_id = 1;
+  string model_id = 2;
+  int32 free_consumed = 3;
+  int32 paid_consumed = 4;
+}
+
+message RefundAccessResponse {}
+
+message RegisterUserRequest {
+  int64 user_id = 1;
+}
+
+message RegisterUserResponse {
+   bool is_new = 1;
+   int32 free_quota = 2;
+   string free_model_id = 3;
+}
+
+message GetModelPreferenceRequest {
+  int64 user_id = 1;
+}
+
+message GetModelPreferenceResponse {
+  string model_id = 1;
+}
+
+message SetModelPreferenceRequest {
+  int64 user_id = 1;
+  string model_id = 2;
+}
+
+message SetModelPreferenceResponse {
+  bool provider_changed = 1;
+}
+
+enum DenialReason {
+  DENIAL_REASON_UNSPECIFIED = 0;
+  QUOTA_EXHAUSTED = 1;
+  NO_SUBSCRIPTION = 2;
+  BLOCKED = 3;
+}

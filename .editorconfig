@@ -18,6 +18,8 @@ ij_kotlin_name_count_to_use_star_import = 999
 ij_kotlin_name_count_to_use_star_import_for_members = 999
 
 ktlint_standard_no-empty-first-line-in-class-body = disabled
+ktlint_standard_spacing-between-declarations-with-annotations = enabled
+ktlint_standard_no-blank-line-in-list = disabled
 
 [*.{bat,cmd,ps1}]
 end_of_line = crlf

@@ -1,5 +1,6 @@
 package com.xeno.subpilot.tgbot.unittests.command
 
+import com.xeno.subpilot.tgbot.client.SubscriptionClient
 import com.xeno.subpilot.tgbot.client.TelegramClient
 import com.xeno.subpilot.tgbot.command.StartCommandHandler
 import com.xeno.subpilot.tgbot.dto.Chat
@@ -31,11 +32,21 @@ class StartCommandHandlerTest {
     @MockK
     lateinit var screenRenderer: ScreenRenderer
 
+    @MockK
+    lateinit var subscriptionClient: SubscriptionClient
+
     private lateinit var startCommandHandler: StartCommandHandler
 
     @BeforeEach
     fun setUp() {
-        startCommandHandler = StartCommandHandler(telegramClient, navigationService, screenRenderer)
+        startCommandHandler =
+            StartCommandHandler(
+                telegramClient,
+                navigationService,
+                screenRenderer,
+                subscriptionClient,
+            )
+        every { subscriptionClient.registerUser(any()) } returns null
     }
 
     @Test
@@ -50,7 +61,10 @@ class StartCommandHandlerTest {
         verify {
             telegramClient.sendMessage(
                 chatId = 1,
-                text = BotResponses.START_RESPONSE.format(StartCommandHandler.DEFAULT_USERNAME),
+                text =
+                    BotResponses.START_ALREADY_REGISTERED_USER_RESPONSE.format(
+                        StartCommandHandler.DEFAULT_USERNAME,
+                    ),
             )
         }
     }
@@ -68,7 +82,7 @@ class StartCommandHandlerTest {
         verify {
             telegramClient.sendMessage(
                 chatId = 1,
-                text = BotResponses.START_RESPONSE.format("Mike"),
+                text = BotResponses.START_ALREADY_REGISTERED_USER_RESPONSE.format("Mike"),
             )
         }
     }
@@ -86,7 +100,10 @@ class StartCommandHandlerTest {
         verify {
             telegramClient.sendMessage(
                 chatId = 1,
-                text = BotResponses.START_RESPONSE.format(StartCommandHandler.DEFAULT_USERNAME),
+                text =
+                    BotResponses.START_ALREADY_REGISTERED_USER_RESPONSE.format(
+                        StartCommandHandler.DEFAULT_USERNAME,
+                    ),
             )
         }
     }

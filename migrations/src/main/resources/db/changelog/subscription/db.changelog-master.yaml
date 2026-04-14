@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/subscription/changes/v1-init.sql
+  - include:
+      file: db/changelog/subscription/changes/v2-add-user-free-quota.sql
+  - include:
+      file: db/changelog/subscription/changes/v3-replace-reset-date-with-next-reset-at.sql

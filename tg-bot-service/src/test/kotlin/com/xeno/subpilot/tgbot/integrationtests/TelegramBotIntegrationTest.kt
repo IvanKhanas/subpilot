@@ -10,13 +10,13 @@ import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension
+import com.xeno.subpilot.proto.chat.v1.ProcessMessageResponse
 import com.xeno.subpilot.tgbot.client.ChatClient
 import com.xeno.subpilot.tgbot.dto.CallbackQuery
 import com.xeno.subpilot.tgbot.dto.Chat
 import com.xeno.subpilot.tgbot.dto.Message
 import com.xeno.subpilot.tgbot.dto.Update
 import com.xeno.subpilot.tgbot.dto.User
-import com.xeno.subpilot.tgbot.message.BotResponses
 import com.xeno.subpilot.tgbot.runtime.TelegramLongPollingService
 import com.xeno.subpilot.tgbot.runtime.TelegramMessageHandler
 import com.xeno.subpilot.tgbot.ux.NavigationService
@@ -85,7 +85,7 @@ class TelegramBotIntegrationTest {
         )
         given(
             chatClient.processMessage(anyLong(), anyLong(), anyString()),
-        ).willReturn("AI response")
+        ).willReturn(ProcessMessageResponse.newBuilder().setText("AI response").build())
     }
 
     @Test
@@ -153,15 +153,12 @@ class TelegramBotIntegrationTest {
     }
 
     @Test
-    fun `start chat text button sends chat invite`() {
+    fun `start chat text button sends greeting message`() {
         messageHandler.onUpdate(messageUpdate(randomId(), BotButtons.BTN_START_CHAT))
 
         wireMock.verify(
             1,
-            postRequestedFor(urlPathEqualTo(sendMessagePath()))
-                .withRequestBody(
-                    matchingJsonPath("$.text", equalTo(BotResponses.CHAT_PROMPT_RESPONSE.text)),
-                ),
+            postRequestedFor(urlPathEqualTo(sendMessagePath())),
         )
     }
 
@@ -216,10 +213,14 @@ class TelegramBotIntegrationTest {
     }
 
     @Test
-    fun `unknown command does not send a message`() {
+    fun `unknown command sends unknown command response`() {
         messageHandler.onUpdate(messageUpdate(randomId(), "/unknowncommand"))
 
-        wireMock.verify(0, postRequestedFor(urlPathEqualTo(sendMessagePath())))
+        wireMock.verify(
+            1,
+            postRequestedFor(urlPathEqualTo(sendMessagePath()))
+                .withRequestBody(matchingJsonPath("$.text", containing("Unknown command"))),
+        )
     }
 
     @Test

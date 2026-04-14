@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: subscription-service
+  datasource:
+    url: ${SUBSCRIPTION_DB_URL:jdbc:postgresql://localhost:5432/subscription}
+    username: ${SUBSCRIPTION_DB_USER:subscription}
+    password: ${SUBSCRIPTION_DB_PASSWORD:subscription}
+  jpa:
+    open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/subscription/db.changelog-master.yaml
+  grpc:
+    server:
+      port: ${SUBSCRIPTION_GRPC_SERVER_PORT:9091}
+
+subscription:
+  free-quota: ${SUBSCRIPTION_FREE_QUOTA:10}
+  free-quota-reset-period: ${SUBSCRIPTION_FREE_QUOTA_RESET_PERIOD:7d}
+  default-model: ${SUBSCRIPTION_DEFAULT_MODEL:gpt-4o-mini}
+  model-providers:
+    gpt-4o-mini: openai
+    gpt-4o: openai
+    gpt-4-turbo: openai
+  model-costs:
+    gpt-4o-mini: 1
+    gpt-4o: 2
+    gpt-4-turbo: 3
+  plans:
+    openai-basic:
+      provider: openai
+      requests: 100
+    openai-pro:
+      provider: openai
+      requests: 300
+
+server:
+  port: ${SUBSCRIPTION_SERVER_PORT:8083}

@@ -1,9 +1,7 @@
 package com.xeno.subpilot.tgbot.config
 
-import com.xeno.subpilot.tgbot.properties.NavigationProperties
 import com.xeno.subpilot.tgbot.properties.TelegramBotProperties
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpRequest
@@ -23,7 +21,6 @@ import java.time.Duration
 private val logger = KotlinLogging.logger {}
 
 @Configuration
-@EnableConfigurationProperties(TelegramBotProperties::class, NavigationProperties::class)
 class TelegramBotConfig {
 
     @Bean

@@ -4,6 +4,8 @@ import com.xeno.subpilot.tgbot.client.TelegramClient
 import com.xeno.subpilot.tgbot.message.BotResponses
 import org.springframework.stereotype.Component
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 private val ANIMATION_FRAMES = listOf("⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷")
 private const val FRAME_DELAY_MS = 200L
 
@@ -19,24 +21,26 @@ class AIResponseWaitingIndicator(
             telegramClient.sendMessage(chatId, BotResponses.WAITING_RESPONSE.text)
                 ?: return block()
 
-        val animationThread = startAnimationThread(chatId, messageId)
+        val stopped = AtomicBoolean(false)
+        val animationThread = startAnimationThread(chatId, messageId, stopped)
         return try {
             block()
         } finally {
-            stopAnimation(animationThread, chatId, messageId)
+            stopAnimation(animationThread, stopped, chatId, messageId)
         }
     }
 
     private fun startAnimationThread(
         chatId: Long,
         messageId: Long,
+        stopped: AtomicBoolean,
     ): Thread =
         Thread.ofVirtual().start {
             var frameIndex = 0
             try {
-                while (!Thread.currentThread().isInterrupted) {
+                while (!stopped.get()) {
                     Thread.sleep(FRAME_DELAY_MS)
-                    if (Thread.currentThread().isInterrupted) break
+                    if (stopped.get()) break
                     frameIndex = (frameIndex + 1) % ANIMATION_FRAMES.size
                     telegramClient.editMessage(
                         chatId,
@@ -45,16 +49,17 @@ class AIResponseWaitingIndicator(
                     )
                 }
             } catch (_: InterruptedException) {
-                // animation stopped normally
+                Thread.currentThread().interrupt()
             }
         }
 
     private fun stopAnimation(
         thread: Thread,
+        stopped: AtomicBoolean,
         chatId: Long,
         messageId: Long,
     ) {
-        thread.interrupt()
+        stopped.set(true)
         thread.join()
         telegramClient.deleteMessage(chatId, messageId)
     }
