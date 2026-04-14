@@ -24,8 +24,8 @@ class BotButtonsTest {
     }
 
     @Test
-    fun `main menu has two rows`() {
-        assertEquals(2, BotButtons.mainMenu.keyboard.size)
+    fun `main menu has three rows`() {
+        assertEquals(3, BotButtons.mainMenu.keyboard.size)
     }
 
     @Test

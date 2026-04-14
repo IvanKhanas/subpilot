@@ -11,6 +11,7 @@ object BotButtons {
     const val BTN_HELP = "ℹ\uFE0FHelp"
     const val BTN_BACK = "⏪Back"
     const val BTN_MAIN_MENU = "\uD83C\uDFE0Main menu"
+    const val SUPPORT = "\uD83D\uDCACSupport"
 
     val mainMenu =
         ReplyKeyboardMarkup(
@@ -18,6 +19,7 @@ object BotButtons {
                 listOf(
                     listOf(KeyboardButton(BTN_START_CHAT)),
                     listOf(KeyboardButton(BTN_CHOOSE_MODEL), KeyboardButton(BTN_HELP)),
+                    listOf(KeyboardButton(SUPPORT)),
                 ),
         )
 

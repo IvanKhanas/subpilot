@@ -1,6 +1,8 @@
 package com.xeno.subpilot.tgbot.ux
 
 import com.xeno.subpilot.tgbot.properties.NavigationProperties
+import org.springframework.data.redis.core.RedisOperations
+import org.springframework.data.redis.core.SessionCallback
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Service
 
@@ -14,8 +16,17 @@ class NavigationService(
         screen: BotScreen,
     ) {
         val key = redisKey(chatId)
-        redis.opsForList().rightPush(key, screen.name)
-        redis.expire(key, properties.stackTtl)
+        redis.executePipelined(
+            object : SessionCallback<Any?> {
+                override fun <K : Any, V : Any> execute(ops: RedisOperations<K, V>): Any? {
+                    @Suppress("UNCHECKED_CAST")
+                    val stringOps = ops as RedisOperations<String, String>
+                    stringOps.opsForList().rightPush(key, screen.name)
+                    stringOps.expire(key, properties.stackTtl)
+                    return null
+                }
+            },
+        )
     }
 
     fun pop(chatId: Long): BotScreen? {
