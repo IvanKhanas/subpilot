@@ -1,4 +1,6 @@
 package com.xeno.subpilot.subscription.properties
 
-class PlanProperties {
-}
+data class PlanProperties(
+    val provider: String,
+    val requests: Int,
+)
