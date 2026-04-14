@@ -1,76 +1,115 @@
 # SubPilot
 
-Kotlin/Spring Boot microservice backend for a Telegram AI chatbot with usage limits, paid subscriptions, and payment processing.
+Backend for a Telegram AI bot, built as Kotlin/Spring Boot microservices.
 
-## What works right now
+## Current modules
 
-### Telegram bot (`tg-bot-service`)
+- `tg-bot-service` — Telegram transport layer, commands, text-button UX, and gRPC clients.
+- `chat-service` — OpenAI chat orchestration + Redis chat history.
+- `subscription-service` — user registration, model preference, free quota and paid-balance access checks.
+- `payment-service` — Spring Boot skeleton (payment domain is not implemented yet).
+- `proto` — shared gRPC contracts.
+- `migrations` — Liquibase changelogs (currently used by `subscription-service`).
+- `ktlint-rules` — custom ktlint ruleset module used by the build.
 
-- `/start` — welcome screen with navigation menu
-- `/help` — help screen
-- `/menu` — main menu
-- AI chat — send any text message, get a response from the selected model
-- **Provider & model selection** — inline menu to pick provider (OpenAI) and model (GPT-4o, GPT-4o mini, GPT-4 Turbo)
-- Navigation stack with **Back** button (session stored in Redis, 20-min TTL)
-- Waiting indicator while AI is processing
-- OpenAI Markdown → Telegram HTML conversion
+## Implemented behavior
 
-### AI chat (`chat-service`)
+### `tg-bot-service`
 
-- gRPC server (`ProcessMessage`, `SetModel`)
-- OpenAI integration
-- Per-user model preference persisted in PostgreSQL
-- Conversation history in Redis — last 20 messages, 20-min sliding TTL
+- Commands: `/start`, `/help`, `/menu`, `/model <model_id>`, `/support`.
+- Main-menu and model-selection UX via Telegram reply keyboards.
+- Registers user in `subscription-service` on `/start`.
+- Sends chat requests to `chat-service`.
+- Handles structured denial reasons from chat flow:
+  - `QUOTA_EXHAUSTED`
+  - `NO_SUBSCRIPTION`
+  - `BLOCKED`
+- Clears chat context when model provider changes.
 
-### Not yet implemented
+### `chat-service`
 
-- `subscription-service` — free quota (10 req/user), subscription plans (scaffold only)
-- `payment-service` — YooKassa payments (scaffold only)
-- `notification-service` — payment receipts via Kafka (scaffold only)
+- gRPC API:
+  - `ProcessMessage`
+  - `ClearHistory`
+- Resolves user model from `subscription-service`.
+- Runs access check in `subscription-service` before OpenAI call.
+- Stores recent conversation in Redis (`chat:history:{chatId}`), bounded and TTL-based.
+- Refunds consumed quota through `subscription-service` when processing fails after access was consumed.
 
-## Architecture
+### `subscription-service`
+
+- gRPC API:
+  - `CheckAccess`
+  - `RefundAccess`
+  - `RegisterUser`
+  - `GetModelPreference`
+  - `SetModelPreference`
+- PostgreSQL + Liquibase persistence.
+- Keeps free quota per provider with reset period.
+- Splits consumption between free and paid balance.
+- Returns metadata for UI/UX (`available_requests`, `model_cost`, `reset_at_epoch`, consumed counters).
+
+## Runtime topology
 
 ```
-Telegram ──► tg-bot-service (8081)
-                  │  gRPC
-                  ▼
-             chat-service (8082 / gRPC 9090)
-                  │  PostgreSQL  │  Redis
+Telegram
+  -> tg-bot-service
+      -> (gRPC) chat-service
+      -> (gRPC) subscription-service
+
+chat-service
+  -> (gRPC) subscription-service
+  -> Redis
+
+subscription-service
+  -> PostgreSQL (Liquibase)
 ```
 
-Inter-service: gRPC for synchronous calls, Kafka planned for async payment events.
+## Environment configuration
 
-## Tech stack
+Repository uses `.env.example` as the canonical env template (if you were using `.env.sample`, switch to `.env.example`).
 
-- Kotlin 2.2, Spring Boot 4.0, Java 21
-- gRPC (grpc-spring-boot-starter)
-- PostgreSQL + Liquibase (chat-service)
-- Redis (chat history, navigation state)
-- Gradle multi-module with convention plugins
+Minimum values you should set:
 
-## Local development
+- `TELEGRAM_BOT_TOKEN`
+- `OPENAI_API_KEY`
+- `REDIS_PASSWORD` (must be non-empty for docker compose setup)
+- `SUBSCRIPTION_DB_PASSWORD`
+
+Most other keys in `.env.example` are optional overrides with service defaults.
+
+## Local run (Docker Compose)
 
 ```bash
 cp .env.example .env
-# fill in TELEGRAM_BOT_TOKEN and OPENAI_API_KEY
-
+# fill required secrets
 docker compose up --build
 ```
 
-## Build & test
+Services and ports:
+
+- `tg-bot-service`: `1991`
+- `chat-service`: `8082` (HTTP), `9090` (gRPC)
+- `subscription-service`: `8083` (HTTP), `9091` (gRPC)
+- `postgres`: `5432`
+- `redis`: `6379`
+
+## Build and tests
 
 ```bash
-# Build (skip tests)
-./gradlew build -x test -x ktlintCheck
-
-# Run tests
+./gradlew build
 ./gradlew test
 
-# Lint / auto-format
-./gradlew ktlintCheck
-./gradlew ktlintFormat
+# module-level examples
+./gradlew :tg-bot-service:test
+./gradlew :chat-service:test
+./gradlew :subscription-service:test
 ```
+
+## Status notes
+
+- Payment flow, YooKassa integration, Kafka outbox/events, and notification service are not implemented in this repository state.
 
 ## License
 
-Apache-2.0 — see `LICENSE` and `NOTICE`.
+Apache-2.0. See `LICENSE` and `NOTICE`.
