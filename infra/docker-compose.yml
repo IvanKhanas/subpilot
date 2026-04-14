@@ -2,14 +2,15 @@ services:
   postgres:
     build: ./postgres
     environment:
-      POSTGRES_USER: ${CHAT_DB_USER}
-      POSTGRES_PASSWORD: ${CHAT_DB_PASSWORD}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      SUBSCRIPTION_DB_PASSWORD: ${SUBSCRIPTION_DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${CHAT_DB_USER} -d ${CHAT_DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d subscription"]
       interval: 5s
       timeout: 5s
       retries: 5
