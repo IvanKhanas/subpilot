@@ -20,6 +20,12 @@ allprojects {
 }
 
 subprojects {
+    plugins.withId("org.jlleitschuh.gradle.ktlint") {
+        dependencies {
+            "ktlint"(project(":ktlint-rules"))
+        }
+    }
+
     plugins.withId("org.jetbrains.kotlin.jvm") {
         extensions.configure<KotlinJvmProjectExtension> {
             jvmToolchain(21)
