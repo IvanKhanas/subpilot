@@ -49,6 +49,7 @@ class AIResponseWaitingIndicator(
                     )
                 }
             } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
             }
         }
 
