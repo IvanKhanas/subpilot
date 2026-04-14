@@ -63,10 +63,10 @@ jobs:
           name: jacoco-xml-reports
           if-no-files-found: error
           path: |
-            chat-service/build/reports/jacoco/test/jacocoTestReport.xml
-            subscription-service/build/reports/jacoco/test/jacocoTestReport.xml
-            tg-bot-service/build/reports/jacoco/test/jacocoTestReport.xml
-            payment-service/build/reports/jacoco/test/jacocoTestReport.xml
+            chat-service/build/reports/jacoco/test
+            subscription-service/build/reports/jacoco/test
+            tg-bot-service/build/reports/jacoco/test
+            payment-service/build/reports/jacoco/test
 
   lint:
     name: Lint
@@ -100,7 +100,7 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           name: jacoco-xml-reports
-          path: coverage-reports
+          path: .
 
       - name: Run Ktlint
         run: ./gradlew ktlintCheck
@@ -113,5 +113,4 @@ jobs:
             -Dsonar.token="$SONAR_TOKEN" \
             -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
             -Dsonar.organization="$SONAR_ORGANIZATION" \
-            -Dsonar.projectName="subpilot" \
-            -Dsonar.coverage.jacoco.xmlReportPaths="coverage-reports/**/jacocoTestReport.xml"
+            -Dsonar.projectName="subpilot"
