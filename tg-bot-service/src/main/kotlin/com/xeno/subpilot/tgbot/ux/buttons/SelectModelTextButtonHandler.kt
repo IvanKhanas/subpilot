@@ -1,6 +1,7 @@
 package com.xeno.subpilot.tgbot.ux.buttons
 
-import com.xeno.subpilot.tgbot.client.SubscriptionGrpcClient
+import com.xeno.subpilot.tgbot.client.ChatClient
+import com.xeno.subpilot.tgbot.client.SubscriptionClient
 import com.xeno.subpilot.tgbot.client.TelegramClient
 import com.xeno.subpilot.tgbot.dto.Message
 import com.xeno.subpilot.tgbot.exception.SubscriptionServiceException
@@ -13,7 +14,8 @@ import org.springframework.stereotype.Component
 @Order(5)
 class SelectModelTextButtonHandler(
     private val telegramClient: TelegramClient,
-    private val subscriptionGrpcClient: SubscriptionGrpcClient,
+    private val subscriptionClient: SubscriptionClient,
+    private val chatClient: ChatClient,
 ) : TextButtonHandler {
 
     override fun supports(text: String) = AiProvider.findModelByDisplayName(text) != null
@@ -22,7 +24,10 @@ class SelectModelTextButtonHandler(
         val userId = message.from?.id ?: return
         val model = AiProvider.findModelByDisplayName(message.text ?: return) ?: return
         try {
-            subscriptionGrpcClient.setModelPreference(userId, model.id)
+            val providerChanged = subscriptionClient.setModelPreference(userId, model.id)
+            if (providerChanged) {
+                chatClient.clearHistory(message.chat.id)
+            }
             telegramClient.sendMessage(
                 message.chat.id,
                 BotResponses.MODEL_SET_RESPONSE.format(model.displayName),

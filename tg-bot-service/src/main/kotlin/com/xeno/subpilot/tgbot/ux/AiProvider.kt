@@ -22,12 +22,15 @@ enum class AiProvider(
                     it.models
                 }.associateBy { it.displayName }
         private val modelById = entries.flatMap { it.models }.associateBy { it.id }
+        private val providerByModelId = entries.flatMap { p -> p.models.map { it.id to p } }.toMap()
 
         fun findByDisplayName(name: String): AiProvider? = byDisplayName[name]
 
         fun findModelByDisplayName(name: String): AiModel? = modelByDisplayName[name]
 
         fun findModelById(id: String): AiModel? = modelById[id]
+
+        fun findProviderByModelId(id: String): AiProvider? = providerByModelId[id]
     }
 }
 
