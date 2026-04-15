@@ -19,7 +19,7 @@ CREATE TABLE payment
 CREATE INDEX idx_payment_yookassa_payment_id ON payment (yookassa_payment_id);
 
 --changeset xeno:v1-create-outbox-event
-CREATE TABLE outbox_event
+CREATE TABLE outbox_payment_event
 (
     id           BIGSERIAL    NOT NULL PRIMARY KEY,
     event_type   VARCHAR(100) NOT NULL,
@@ -29,5 +29,5 @@ CREATE TABLE outbox_event
 );
 
 --changeset xeno:v1-create-outbox-event-unpublished-index
-CREATE INDEX idx_outbox_event_unpublished ON outbox_event (created_at)
+CREATE INDEX idx_outbox_event_unpublished ON outbox_payment_event (created_at)
     WHERE published_at IS NULL;
