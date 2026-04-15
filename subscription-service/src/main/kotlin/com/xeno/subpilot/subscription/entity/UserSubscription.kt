@@ -17,7 +17,7 @@ class UserSubscription(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @Column(name = "payment_id", nullable = false, unique = true)
+    @Column(name = "payment_id", nullable = false)
     val paymentId: UUID,
 
     @Column(name = "user_id", nullable = false)

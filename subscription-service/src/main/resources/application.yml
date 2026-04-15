@@ -27,11 +27,13 @@ subscription:
     gpt-4-turbo: 3
   plans:
     openai-basic:
-      provider: openai
-      requests: 100
+      allocations:
+        - provider: openai
+          requests: 100
     openai-pro:
-      provider: openai
-      requests: 300
+      allocations:
+        - provider: openai
+          requests: 300
 
 server:
   port: ${SUBSCRIPTION_SERVER_PORT:8083}

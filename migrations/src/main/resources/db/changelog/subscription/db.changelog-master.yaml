@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/subscription/changes/v2-add-user-free-quota.sql
   - include:
       file: db/changelog/subscription/changes/v3-replace-reset-date-with-next-reset-at.sql
+  - include:
+      file: db/changelog/subscription/changes/v4-multi-provider-plan-allocations.sql
