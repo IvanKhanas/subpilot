@@ -11,14 +11,15 @@ CREATE TABLE user_loyalty_balance
 --changeset xeno:v1-create-loyalty-transaction
 CREATE TABLE loyalty_transaction
 (
-    id         BIGSERIAL   NOT NULL PRIMARY KEY,
-    user_id    BIGINT      NOT NULL,
-    amount     BIGINT      NOT NULL,
-    type       VARCHAR(10) NOT NULL,
+    id         BIGSERIAL    NOT NULL PRIMARY KEY,
+    user_id    BIGINT       NOT NULL,
+    amount     BIGINT       NOT NULL,
+    type       VARCHAR(10)  NOT NULL,
     payment_id UUID,
-    created_at TIMESTAMP   NOT NULL,
+    reason     VARCHAR(255),
+    created_at TIMESTAMP    NOT NULL,
     CONSTRAINT uq_loyalty_transaction_payment_id_type UNIQUE (payment_id, type),
-    CONSTRAINT chk_loyalty_transaction_type CHECK (type IN ('EARNED', 'SPENT')),
+    CONSTRAINT chk_loyalty_transaction_type CHECK (type IN ('EARNED', 'SPENT', 'ADJUSTED')),
     CONSTRAINT chk_loyalty_transaction_amount CHECK (amount != 0)
 );
 

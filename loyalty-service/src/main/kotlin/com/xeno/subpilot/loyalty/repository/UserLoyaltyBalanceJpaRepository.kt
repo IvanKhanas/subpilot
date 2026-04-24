@@ -60,4 +60,18 @@ interface UserLoyaltyBalanceJpaRepository : JpaRepository<UserLoyaltyBalance, Lo
         """,
     )
     fun findPointsByUserId(userId: Long): Long?
+
+    @Modifying(clearAutomatically = true)
+    @Query(
+        value = """
+            UPDATE user_loyalty_balance
+            SET points = GREATEST(0, points - :amount)
+            WHERE user_id = :userId
+        """,
+        nativeQuery = true,
+    )
+    fun subtractCappedAtZero(
+        userId: Long,
+        amount: Long,
+    )
 }

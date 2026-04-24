@@ -58,4 +58,21 @@ interface LoyaltyTransactionJpaRepository : JpaRepository<LoyaltyTransaction, Lo
         paymentId: UUID,
         createdAt: LocalDateTime,
     ): Int
+
+    @Modifying(clearAutomatically = true)
+    @Query(
+        value = """
+            INSERT INTO loyalty_transaction (user_id, amount, type, payment_id, reason, created_at)
+            VALUES (:userId, :amount, 'ADJUSTED', :idempotencyKey, :reason, :createdAt)
+            ON CONFLICT (payment_id, type) DO NOTHING
+        """,
+        nativeQuery = true,
+    )
+    fun insertAdjustedIfAbsent(
+        userId: Long,
+        amount: Long,
+        idempotencyKey: UUID,
+        reason: String,
+        createdAt: LocalDateTime,
+    ): Int
 }

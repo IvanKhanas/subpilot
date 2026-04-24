@@ -17,13 +17,17 @@ package com.xeno.subpilot.loyalty.grpc
 
 import com.xeno.subpilot.loyalty.dto.SpendDenialReason as ServiceSpendDenialReason
 import com.xeno.subpilot.loyalty.dto.SpendResult
+import com.xeno.subpilot.loyalty.service.LoyaltyAdminService
 import com.xeno.subpilot.loyalty.service.LoyaltyService
+import com.xeno.subpilot.proto.loyalty.v1.AdjustPointsRequest
+import com.xeno.subpilot.proto.loyalty.v1.AdjustPointsResponse
 import com.xeno.subpilot.proto.loyalty.v1.GetBalanceRequest
 import com.xeno.subpilot.proto.loyalty.v1.GetBalanceResponse
 import com.xeno.subpilot.proto.loyalty.v1.LoyaltyServiceGrpcKt
 import com.xeno.subpilot.proto.loyalty.v1.SpendDenialReason
 import com.xeno.subpilot.proto.loyalty.v1.SpendPointsRequest
 import com.xeno.subpilot.proto.loyalty.v1.SpendPointsResponse
+import com.xeno.subpilot.proto.loyalty.v1.adjustPointsResponse
 import com.xeno.subpilot.proto.loyalty.v1.getBalanceResponse
 import com.xeno.subpilot.proto.loyalty.v1.spendPointsResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -40,6 +44,7 @@ private val logger = KotlinLogging.logger {}
 @GrpcService
 class LoyaltyGrpcService(
     private val loyaltyService: LoyaltyService,
+    private val loyaltyAdminService: LoyaltyAdminService,
     private val ioDispatcher: CoroutineContext,
 ) : LoyaltyServiceGrpcKt.LoyaltyServiceCoroutineImplBase() {
 
@@ -74,6 +79,22 @@ class LoyaltyGrpcService(
                 }
             }
         }
+    }
+
+    override suspend fun adjustPoints(request: AdjustPointsRequest): AdjustPointsResponse {
+        logger.atInfo {
+            message = "grpc_adjust_points"
+            payload = mapOf("user_id" to request.userId, "delta" to request.delta)
+        }
+        withContext(ioDispatcher) {
+            loyaltyAdminService.adjustPoints(
+                userId = request.userId,
+                delta = request.delta,
+                reason = request.reason,
+                idempotencyKey = UUID.fromString(request.idempotencyKey),
+            )
+        }
+        return adjustPointsResponse {}
     }
 
     private fun ServiceSpendDenialReason.toProto(): SpendDenialReason =

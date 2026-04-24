@@ -47,6 +47,9 @@ class LoyaltyTransaction(
     @Column(name = "payment_id")
     val paymentId: UUID? = null,
 
+    @Column(name = "reason")
+    val reason: String? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: LocalDateTime,
 )
