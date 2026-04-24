@@ -69,7 +69,7 @@ class JpaUserSubscriptionActivationRepository(
                         }.toList()
                     }
                 }
-        }!!
+        } ?: emptyList()
 
     override fun batchUpsertRequestBalance(
         userId: Long,
