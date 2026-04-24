@@ -34,7 +34,17 @@ class SubscriptionGrpcClientTest {
 
     @BeforeEach
     fun setUp() {
-        client = SubscriptionGrpcClient(stub, GrpcRetry(GrpcRetryProperties(maxAttempts = 1)))
+        client =
+            SubscriptionGrpcClient(
+                stub,
+                GrpcRetry(
+                    GrpcRetryProperties(
+                        maxAttempts = 1,
+                        initialBackoffMs = 1,
+                        backoffMultiplier = 1.0,
+                    ),
+                ),
+            )
     }
 
     @Test

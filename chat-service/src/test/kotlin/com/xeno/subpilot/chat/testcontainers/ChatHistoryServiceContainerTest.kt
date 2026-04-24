@@ -95,9 +95,7 @@ class ChatHistoryServiceContainerTest {
         val chatId = randomChatId()
         service.append(chatId, randomMessage(), randomMessage())
 
-        Thread.sleep(2500)
-
-        assertTrue(service.getHistory(chatId).isEmpty())
+        awaitCondition(timeoutMs = 5000) { service.getHistory(chatId).isEmpty() }
     }
 
     @Test

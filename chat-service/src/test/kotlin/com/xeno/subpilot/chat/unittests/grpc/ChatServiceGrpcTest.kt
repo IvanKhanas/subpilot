@@ -7,7 +7,7 @@ import com.xeno.subpilot.chat.exception.OpenAiException
 import com.xeno.subpilot.chat.grpc.ChatServiceGrpc
 import com.xeno.subpilot.chat.service.ChatHistoryService
 import com.xeno.subpilot.chat.service.ChatTurn
-import com.xeno.subpilot.proto.chat.v1.clearHistoryRequest
+import com.xeno.subpilot.proto.chat.v1.clearContextRequest
 import com.xeno.subpilot.proto.chat.v1.processMessageRequest
 import com.xeno.subpilot.proto.subscription.v1.CheckAccessResponse
 import com.xeno.subpilot.proto.subscription.v1.DenialReason
@@ -211,7 +211,7 @@ class ChatServiceGrpcTest {
         runTest {
             justRun { chatHistoryService.clear(any()) }
 
-            grpc.clearHistory(clearHistoryRequest { chatId = testChatId })
+            grpc.clearHistory(clearContextRequest { chatId = testChatId })
 
             verify { chatHistoryService.clear(testChatId) }
         }

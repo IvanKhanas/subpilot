@@ -4,11 +4,11 @@ import com.xeno.subpilot.chat.client.OpenAiChatClient
 import com.xeno.subpilot.chat.client.SubscriptionGrpcClient
 import com.xeno.subpilot.chat.service.ChatHistoryService
 import com.xeno.subpilot.proto.chat.v1.ChatServiceGrpcKt
-import com.xeno.subpilot.proto.chat.v1.ClearHistoryRequest
-import com.xeno.subpilot.proto.chat.v1.ClearHistoryResponse
+import com.xeno.subpilot.proto.chat.v1.ClearContextRequest
+import com.xeno.subpilot.proto.chat.v1.ClearContextResponse
 import com.xeno.subpilot.proto.chat.v1.ProcessMessageRequest
 import com.xeno.subpilot.proto.chat.v1.ProcessMessageResponse
-import com.xeno.subpilot.proto.chat.v1.clearHistoryResponse
+import com.xeno.subpilot.proto.chat.v1.clearContextResponse
 import com.xeno.subpilot.proto.chat.v1.processMessageResponse
 import com.xeno.subpilot.proto.subscription.v1.CheckAccessResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -88,7 +88,7 @@ class ChatServiceGrpc(
         }
     }
 
-    override suspend fun clearHistory(request: ClearHistoryRequest): ClearHistoryResponse {
+    override suspend fun clearHistory(request: ClearContextRequest): ClearContextResponse {
         logger.atDebug {
             message = "grpc_clear_history"
             payload = mapOf("chat_id" to request.chatId)
@@ -96,6 +96,6 @@ class ChatServiceGrpc(
         withContext(ioDispatcher) {
             chatHistoryService.clear(request.chatId)
         }
-        return clearHistoryResponse { }
+        return clearContextResponse { }
     }
 }
