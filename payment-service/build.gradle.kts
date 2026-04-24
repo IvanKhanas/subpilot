@@ -10,9 +10,6 @@ plugins {
 
 repositories {
     mavenCentral()
-    maven {
-        url = uri("https://maven.dynomake.it/releases")
-    }
 }
 
 dependencies {
@@ -28,7 +25,6 @@ dependencies {
     implementation(libs.kotlin.logging)
     implementation(libs.liquibase.core)
     implementation(libs.spring.kafka)
-    implementation(libs.yookassa)
 
     implementation(project(":proto"))
     runtimeOnly(project(":migrations"))
@@ -45,5 +41,6 @@ dependencies {
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.testcontainers.kafka)
     testImplementation(libs.wiremock)
+    testImplementation(libs.springmockk)
     testRuntimeOnly(libs.junit.platform.launcher)
 }

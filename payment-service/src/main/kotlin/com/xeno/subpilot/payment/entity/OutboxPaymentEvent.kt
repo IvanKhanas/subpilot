@@ -14,16 +14,16 @@ import java.time.LocalDateTime
 class OutboxPaymentEvent(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0,
+    val id: Long? = null,
 
     @Column(name = "event_type", nullable = false)
     val eventType: String,
 
-    @Column(name = "payload", nullable = false, columnDefinition = "jsonb")
+    @Column(name = "payload", nullable = false, columnDefinition = "text")
     val payload: String,
 
     @Column(name = "created_at", nullable = false)
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: LocalDateTime,
 
     @Column(name = "published_at")
     val publishedAt: LocalDateTime? = null,

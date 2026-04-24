@@ -1,0 +1,19 @@
+spring:
+  liquibase:
+    enabled: false
+  grpc:
+    server:
+      port: 0
+    client:
+      channels:
+        subscription-service:
+          address: localhost:9999
+
+yookassa:
+  shop-id: test-shop-id
+  secret-key: test-secret-key
+  return-url: https://example.com/return
+
+yookassa-outbox:
+  scheduler-interval: 24h
+  batch-size: 10

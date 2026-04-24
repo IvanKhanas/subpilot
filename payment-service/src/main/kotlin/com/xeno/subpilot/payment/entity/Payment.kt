@@ -18,7 +18,7 @@ import java.util.UUID
 class Payment(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    val id: UUID = UUID.randomUUID(),
+    val id: UUID? = null,
 
     @Column(name = "user_id", nullable = false)
     val userId: Long,
@@ -27,7 +27,7 @@ class Payment(
     val planId: String,
 
     @Column(name = "yookassa_payment_id")
-    var yookassaPaymentId: UUID? = null,
+    var yooKassaPaymentId: UUID? = null,
 
     @Column(name = "amount", nullable = false)
     val amount: BigDecimal,
@@ -39,9 +39,12 @@ class Payment(
     @Enumerated(EnumType.STRING)
     var status: PaymentStatus = PaymentStatus.PENDING,
 
+    @Column(name = "bonus_points_used", nullable = false)
+    val bonusPointsUsed: Long = 0,
+
     @Column(name = "created_at", nullable = false)
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: LocalDateTime,
 
     @Column(name = "updated_at", nullable = false)
-    var updatedAt: LocalDateTime = LocalDateTime.now(),
+    var updatedAt: LocalDateTime,
 )
