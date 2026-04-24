@@ -34,12 +34,16 @@ class YooKassaPaymentOutboxPublisher(
 ) {
 
     @Scheduled(fixedDelayString = "\${yookassa-outbox.scheduler-interval}")
+    fun publishScheduled() {
+        publishPending()
+    }
+
     @Transactional
-    fun publish() {
+    fun publishPending(): Int {
         val events =
             outboxPaymentEventJpaRepository
                 .findUnpublished(yooKassaPaymentOutboxProperties.batchSize)
-        if (events.isEmpty()) return
+        if (events.isEmpty()) return 0
         events
             .map { event -> kafkaTemplate.send("payment_succeeded", event.payload) }
             .forEach { it.get() }
@@ -48,5 +52,6 @@ class YooKassaPaymentOutboxPublisher(
             ids = events.mapNotNull { it.id },
             now = LocalDateTime.now(clock),
         )
+        return events.size
     }
 }

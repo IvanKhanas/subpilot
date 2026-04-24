@@ -18,10 +18,14 @@ package com.xeno.subpilot.payment.grpc
 import com.xeno.subpilot.payment.client.SubscriptionGrpcClient
 import com.xeno.subpilot.payment.exception.InvalidPlanException
 import com.xeno.subpilot.payment.service.YooKassaPaymentService
+import com.xeno.subpilot.payment.service.kafka.YooKassaPaymentOutboxPublisher
 import com.xeno.subpilot.proto.payment.v1.CreatePaymentRequest
 import com.xeno.subpilot.proto.payment.v1.CreatePaymentResponse
 import com.xeno.subpilot.proto.payment.v1.PaymentServiceGrpcKt
+import com.xeno.subpilot.proto.payment.v1.TriggerOutboxFlushRequest
+import com.xeno.subpilot.proto.payment.v1.TriggerOutboxFlushResponse
 import com.xeno.subpilot.proto.payment.v1.createPaymentResponse
+import com.xeno.subpilot.proto.payment.v1.triggerOutboxFlushResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.grpc.Status
 import io.grpc.StatusException
@@ -37,6 +41,7 @@ private val logger = KotlinLogging.logger {}
 class PaymentGrpcService(
     private val subscriptionGrpcClient: SubscriptionGrpcClient,
     private val paymentService: YooKassaPaymentService,
+    private val outboxPublisher: YooKassaPaymentOutboxPublisher,
     private val ioDispatcher: CoroutineContext,
 ) : PaymentServiceGrpcKt.PaymentServiceCoroutineImplBase() {
 
@@ -72,5 +77,13 @@ class PaymentGrpcService(
             }
             throw StatusException(Status.INTERNAL.withDescription("Payment creation failed"))
         }
+    }
+
+    override suspend fun triggerOutboxFlush(
+        request: TriggerOutboxFlushRequest,
+    ): TriggerOutboxFlushResponse {
+        logger.atInfo { message = "grpc_trigger_outbox_flush" }
+        val count = withContext(ioDispatcher) { outboxPublisher.publishPending() }
+        return triggerOutboxFlushResponse { flushedCount = count }
     }
 }
