@@ -15,7 +15,6 @@ repositories {
 dependencies {
     implementation(platform(libs.spring.boot.bom))
     implementation(platform(libs.spring.grpc.bom))
-    testImplementation(platform(libs.spring.boot.bom))
 
     implementation(libs.bundles.spring.boot.base)
     implementation(libs.spring.boot.starter.data.jpa)
@@ -31,6 +30,7 @@ dependencies {
 
     runtimeOnly(libs.postgresql)
 
+    testImplementation(platform(libs.spring.boot.bom))
     testImplementation(platform(libs.testcontainers.bom))
     testImplementation(libs.bundles.spring.boot.test)
     testImplementation(libs.mockk)
