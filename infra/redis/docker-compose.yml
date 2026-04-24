@@ -10,6 +10,8 @@ services:
       --appendonly no
     ports:
       - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - subpilot_internal
     deploy:
       resources:
         limits:

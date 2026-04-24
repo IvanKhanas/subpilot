@@ -12,8 +12,8 @@ services:
       SUBSCRIPTION_DB_PASSWORD: ${SUBSCRIPTION_DB_PASSWORD}
       SUBSCRIPTION_GRPC_SERVER_PORT: 9091
       KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
-    ports:
-      - "8083:8083"
+    networks:
+      - subpilot_internal
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,8 +34,8 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       SUBSCRIPTION_GRPC_ADDRESS: subscription-service:9091
-    ports:
-      - "8082:8082"
+    networks:
+      - subpilot_internal
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,6 +58,8 @@ services:
       YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID}
       YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY}
       YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL}
+    networks:
+      - subpilot_internal
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,8 +84,8 @@ services:
       SUBSCRIPTION_GRPC_ADDRESS: subscription-service:9091
       KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
       LOYALTY_CASHBACK_RATE: ${LOYALTY_CASHBACK_RATE:-0.08}
-    ports:
-      - "8085:8085"
+    networks:
+      - subpilot_internal
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,6 +113,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+    networks:
+      - subpilot_internal
     depends_on:
       redis:
         condition: service_healthy
@@ -126,3 +130,7 @@ services:
         condition: service_healthy
       kafka3:
         condition: service_healthy
+
+networks:
+  subpilot_internal:
+    driver: bridge
