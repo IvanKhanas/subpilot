@@ -4,6 +4,7 @@ kotlin = "2.2.21"
 ktlint = "13.1.0"
 ktlint-core = "1.5.0"
 sonarqube = "7.2.3.7755"
+spotless = "8.4.0"
 jackson-module-kotlin = "3.0.4"
 kotlin-logging = "7.0.3"
 mockk = "1.14.2"
@@ -73,3 +74,4 @@ ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
 protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
 kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

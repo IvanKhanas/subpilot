@@ -106,6 +106,9 @@ jobs:
       - name: Run Ktlint
         run: ./gradlew ktlintCheck
 
+      - name: Check license headers
+        run: ./gradlew spotlessCheck
+
       - name: Run SonarQube analysis
         if: ${{ env.SONAR_TOKEN != '' && env.SONAR_HOST_URL != '' && env.SONAR_PROJECT_KEY != '' && env.SONAR_ORGANIZATION != '' }}
         run: |
