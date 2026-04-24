@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: admin-service
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  datasource:
+    url: ${ADMIN_DB_URL:jdbc:postgresql://localhost:5432/admin}
+    username: ${ADMIN_DB_USER:admin}
+    password: ${ADMIN_DB_PASSWORD:admin}
+  jpa:
+    open-in-view: false
+  liquibase:
+    enabled: false
+  grpc:
+    client:
+      channels:
+        subscription-service:
+          address: ${SUBSCRIPTION_GRPC_ADDRESS:localhost:9091}
+        loyalty-service:
+          address: ${LOYALTY_GRPC_ADDRESS:localhost:9095}
+        payment-service:
+          address: ${PAYMENT_GRPC_ADDRESS:localhost:9094}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          secret: ${ADMIN_JWT_SECRET:changeme-dev-secret-at-least-32-chars!}
+
+server:
+  port: ${ADMIN_SERVER_PORT:8086}

@@ -131,6 +131,32 @@ services:
       kafka3:
         condition: service_healthy
 
+  admin-service:
+    build:
+      context: .
+      dockerfile: admin-service/Dockerfile
+    environment:
+      ADMIN_DB_URL: jdbc:postgresql://postgres:5432/admin
+      ADMIN_DB_USER: admin
+      ADMIN_DB_PASSWORD: ${ADMIN_DB_PASSWORD}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      SUBSCRIPTION_GRPC_ADDRESS: subscription-service:9091
+      LOYALTY_GRPC_ADDRESS: loyalty-service:9095
+      PAYMENT_GRPC_ADDRESS: payment-service:9094
+    ports:
+      - "${ADMIN_SERVER_PORT:-8086}:8086"
+    networks:
+      - subpilot_internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      subscription-service:
+        condition: service_started
+      loyalty-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+
 networks:
   subpilot_internal:
     driver: bridge
