@@ -61,6 +61,7 @@ testcontainers-kafka = { group = "org.testcontainers", name = "kafka" }
 spring-kafka = { group = "org.springframework.kafka", name = "spring-kafka" }
 spring-boot-starter-security = { group = "org.springframework.boot", name = "spring-boot-starter-security" }
 spring-boot-starter-oauth2-resource-server = { group = "org.springframework.boot", name = "spring-boot-starter-oauth2-resource-server" }
+spring-boot-starter-validation = { group = "org.springframework.boot", name = "spring-boot-starter-validation" }
 springmockk = { group = "com.ninja-squad", name = "springmockk", version.ref = "springmockk" }
 
 [bundles]

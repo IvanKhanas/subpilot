@@ -47,7 +47,6 @@ class SecurityConfig {
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->
                 auth
-                    .requestMatchers("/actuator/health").permitAll()
                     .requestMatchers(HttpMethod.GET, "/admin/**").hasAuthority("SCOPE_admin.read")
                     .requestMatchers(HttpMethod.POST, "/admin/**").hasAuthority("SCOPE_admin.write")
                     .anyRequest().authenticated()
