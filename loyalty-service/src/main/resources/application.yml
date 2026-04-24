@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: loyalty-service
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  datasource:
+    url: ${LOYALTY_DB_URL:jdbc:postgresql://localhost:5432/loyalty}
+    username: ${LOYALTY_DB_USER:loyalty}
+    password: ${LOYALTY_DB_PASSWORD:loyalty}
+  jpa:
+    open-in-view: false
+  liquibase:
+    enabled: false
+  grpc:
+    server:
+      port: ${LOYALTY_GRPC_SERVER_PORT:9095}
+    client:
+      channels:
+        subscription-service:
+          address: ${SUBSCRIPTION_GRPC_ADDRESS:localhost:9091}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: loyalty-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+grpc:
+  retry:
+    max-attempts: ${GRPC_RETRY_MAX_ATTEMPTS:3}
+    initial-backoff-ms: ${GRPC_RETRY_INITIAL_BACKOFF_MS:200}
+    backoff-multiplier: ${GRPC_RETRY_BACKOFF_MULTIPLIER:3.0}
+
+loyalty:
+  cashback-rate: ${LOYALTY_CASHBACK_RATE:0.08}
+
+server:
+  port: ${LOYALTY_SERVER_PORT:8085}
