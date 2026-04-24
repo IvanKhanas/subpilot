@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package subpilot.payment.v1;
+
+option java_package = "com.xeno.subpilot.proto.payment.v1";
+option java_multiple_files = true;
+
+service PaymentService {
+    rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse);
+}
+
+message CreatePaymentRequest {
+    int64 user_id = 1;
+    string plan_id = 2;
+    int64 bonus_points_to_apply = 3;
+}
+
+message CreatePaymentResponse {
+    string payment_id = 1;
+    string confirmation_url = 2;
+}

@@ -11,6 +11,10 @@ service SubscriptionService {
   rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
   rpc GetModelPreference(GetModelPreferenceRequest) returns (GetModelPreferenceResponse);
   rpc SetModelPreference(SetModelPreferenceRequest) returns (SetModelPreferenceResponse);
+  rpc GetPlans(GetPlansRequest) returns (GetPlansResponse);
+  rpc GetPlanInfo(GetPlanInfoRequest) returns (GetPlanInfoResponse);
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+  rpc ActivateSubscription(ActivateSubscriptionRequest) returns (ActivateSubscriptionResponse);
 }
 
 message CheckAccessRequest {
@@ -62,6 +66,8 @@ message SetModelPreferenceRequest {
 
 message SetModelPreferenceResponse {
   bool provider_changed = 1;
+  int32 model_cost = 2;
+  string provider = 3;
 }
 
 enum DenialReason {
@@ -70,3 +76,53 @@ enum DenialReason {
   NO_SUBSCRIPTION = 2;
   BLOCKED = 3;
 }
+
+message GetPlansRequest {}
+
+message GetPlansResponse {
+  repeated PlanInfo plans = 1;
+}
+
+message GetPlanInfoRequest {
+  string plan_id = 1;
+}
+
+message GetPlanInfoResponse {
+  PlanInfo plan = 1;
+}
+
+message PlanAllocation {
+  string provider = 1;
+  int32 requests = 2;
+}
+
+message PlanInfo {
+  string plan_id = 1;
+  string provider = 2;
+  string display_name = 3;
+  string price = 4;
+  string currency = 5;
+  repeated PlanAllocation allocations = 6;
+}
+
+message GetBalanceRequest {
+    int64 user_id = 1;
+}
+
+message ProviderBalance {
+    string provider = 1;
+    int32 requests_remaining = 2;
+    int64 next_reset_at_epoch = 3;
+}
+
+message GetBalanceResponse {
+    repeated ProviderBalance free_balances = 1;
+    repeated ProviderBalance paid_balances = 2;
+}
+message ActivateSubscriptionRequest {
+  int64 user_id = 1;
+  string plan_id = 2;
+  string idempotency_key = 3;
+}
+
+message ActivateSubscriptionResponse {}
