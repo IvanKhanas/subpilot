@@ -67,7 +67,13 @@ class PaymentSucceededConsumerTest {
 
     @BeforeEach
     fun setUp() {
-        consumer = PaymentSucceededConsumer(activationService, planRepository, kafkaTemplate, objectMapper)
+        consumer =
+            PaymentSucceededConsumer(
+                activationService,
+                planRepository,
+                kafkaTemplate,
+                objectMapper,
+            )
         every { kafkaTemplate.send(any(), any()) } returns CompletableFuture.completedFuture(null)
         every { planRepository.findById("openai-basic") } returns openaiBasicPlan
         every { planRepository.findById("unknown-plan") } returns null
@@ -82,7 +88,12 @@ class PaymentSucceededConsumerTest {
                 planId = "openai-basic",
                 amount = BigDecimal("199.00"),
             )
-        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns paymentEvent
+        every {
+            objectMapper.readValue(
+                "event-json",
+                PaymentSucceededEvent::class.java,
+            )
+        } returns paymentEvent
         every { activationService.activate(paymentEvent) } returns true
         val publishedEvent = slot<Any>()
         every { objectMapper.writeValueAsString(capture(publishedEvent)) } returns """{"ok":true}"""
@@ -109,7 +120,12 @@ class PaymentSucceededConsumerTest {
                 planId = "openai-basic",
                 amount = BigDecimal("199.00"),
             )
-        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns paymentEvent
+        every {
+            objectMapper.readValue(
+                "event-json",
+                PaymentSucceededEvent::class.java,
+            )
+        } returns paymentEvent
         every { activationService.activate(paymentEvent) } returns false
 
         consumer.consume("event-json")
@@ -127,7 +143,12 @@ class PaymentSucceededConsumerTest {
                 planId = "unknown-plan",
                 amount = BigDecimal("199.00"),
             )
-        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns paymentEvent
+        every {
+            objectMapper.readValue(
+                "event-json",
+                PaymentSucceededEvent::class.java,
+            )
+        } returns paymentEvent
         every { activationService.activate(paymentEvent) } returns true
 
         consumer.consume("event-json")

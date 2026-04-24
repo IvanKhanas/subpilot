@@ -113,10 +113,11 @@ class SubscriptionGrpcServiceTest {
             displayName = "Combo Basic - 50 OpenAI + 50 Anthropic",
             price = BigDecimal("299.00"),
             currency = "RUB",
-            allocations = listOf(
-                ProviderAllocation(provider = "openai", requests = 50),
-                ProviderAllocation(provider = "anthropic", requests = 50),
-            ),
+            allocations =
+                listOf(
+                    ProviderAllocation(provider = "openai", requests = 50),
+                    ProviderAllocation(provider = "anthropic", requests = 50),
+                ),
         )
 
     private lateinit var service: SubscriptionGrpcService
@@ -134,10 +135,11 @@ class SubscriptionGrpcServiceTest {
                 planRepository,
                 UnconfinedTestDispatcher(),
             )
-        every { planRepository.findAllActive() } returns mapOf(
-            "openai-basic" to openaiBasicPlan,
-            "combo-basic" to comboPlan,
-        )
+        every { planRepository.findAllActive() } returns
+            mapOf(
+                "openai-basic" to openaiBasicPlan,
+                "combo-basic" to comboPlan,
+            )
         every { planRepository.findById("openai-basic") } returns openaiBasicPlan
         every { planRepository.findById("combo-basic") } returns comboPlan
         every { planRepository.findById("unknown-plan") } returns null
