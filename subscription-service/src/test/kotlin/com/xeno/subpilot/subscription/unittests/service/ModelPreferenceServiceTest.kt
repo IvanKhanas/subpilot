@@ -79,9 +79,11 @@ class ModelPreferenceServiceTest {
         every { modelPreferenceRepository.findById(userId) } returns previousModel
         justRun { modelPreferenceRepository.upsert(userId, newModel) }
 
-        val providerChanged = service.setModelPreference(userId, newModel)
+        val result = service.setModelPreference(userId, newModel)
 
-        assertFalse(providerChanged)
+        assertFalse(result.providerChanged)
+        assertEquals(properties.modelCosts[newModel], result.modelCost)
+        assertEquals(properties.modelProviders[newModel], result.provider)
         verify { modelPreferenceRepository.upsert(userId, newModel) }
     }
 
@@ -97,9 +99,11 @@ class ModelPreferenceServiceTest {
         every { modelPreferenceRepository.findById(userId) } returns previousModel
         justRun { modelPreferenceRepository.upsert(userId, newModel) }
 
-        val providerChanged = service.setModelPreference(userId, newModel)
+        val result = service.setModelPreference(userId, newModel)
 
-        assertTrue(providerChanged)
+        assertTrue(result.providerChanged)
+        assertEquals(properties.modelCosts[newModel], result.modelCost)
+        assertEquals(properties.modelProviders[newModel], result.provider)
         verify { modelPreferenceRepository.upsert(userId, newModel) }
     }
 
@@ -108,8 +112,10 @@ class ModelPreferenceServiceTest {
         every { modelPreferenceRepository.findById(userId) } returns null
         justRun { modelPreferenceRepository.upsert(userId, "gpt-4o") }
 
-        val providerChanged = service.setModelPreference(userId, "gpt-4o")
+        val result = service.setModelPreference(userId, "gpt-4o")
 
-        assertFalse(providerChanged)
+        assertFalse(result.providerChanged)
+        assertEquals(3, result.modelCost)
+        assertEquals("openai", result.provider)
     }
 }

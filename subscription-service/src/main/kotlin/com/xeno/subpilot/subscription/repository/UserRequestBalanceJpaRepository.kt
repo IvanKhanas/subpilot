@@ -42,4 +42,6 @@ interface UserRequestBalanceJpaRepository :
         userId: Long,
         provider: String,
     ): UserRequestBalance?
+
+    fun findAllByUserId(userId: Long): List<UserRequestBalance>
 }

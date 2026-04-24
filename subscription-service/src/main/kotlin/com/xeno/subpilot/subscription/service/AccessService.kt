@@ -69,8 +69,10 @@ class AccessService(
                 modelCost = cost,
             )
         }
-        quota.requestsRemaining -= freeToUse
-        val freeQuotaJustExhausted = freeToUse > 0 && quota.requestsRemaining == 0
+        if (freeToUse > 0) {
+            freeQuotaRepository.deductRequests(userId, provider, freeToUse)
+        }
+        val freeQuotaJustExhausted = freeToUse > 0 && (quota.requestsRemaining - freeToUse) == 0
         return if (freeQuotaJustExhausted) {
             AccessResult(
                 allowed = true,

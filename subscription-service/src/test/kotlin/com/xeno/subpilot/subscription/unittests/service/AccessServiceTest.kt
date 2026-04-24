@@ -63,6 +63,7 @@ class AccessServiceTest {
                 properties,
             )
         every { subscriptionUserRepository.findById(any()) } returns null
+        justRun { freeQuotaRepository.deductRequests(any(), any(), any()) }
     }
 
     private fun quota(
@@ -106,18 +107,17 @@ class AccessServiceTest {
     }
 
     @ParameterizedTest(
-        name = "free={0}, cost=3 -> freeConsumed={1}, paidConsumed={2}, remaining={3}",
+        name = "free={0}, cost=3 -> freeConsumed={1}, paidConsumed={2}",
     )
     @CsvSource(
-        "5, 3, 0, 2",
-        "1, 1, 2, 0",
-        "0, 0, 3, 0",
+        "5, 3, 0",
+        "1, 1, 2",
+        "0, 0, 3",
     )
     fun `checkAndConsume correctly splits deduction across free and paid quota`(
         freeRemaining: Int,
         expectedFreeConsumed: Int,
         expectedPaidConsumed: Int,
-        expectedRemainingAfter: Int,
     ) {
         val quota = quota(remaining = freeRemaining)
         every { freeQuotaRepository.findByUserIdAndProviderForUpdate(userId, "openai") } returns
@@ -138,7 +138,11 @@ class AccessServiceTest {
         assertTrue(result.allowed)
         assertEquals(expectedFreeConsumed, result.freeConsumed)
         assertEquals(expectedPaidConsumed, result.paidConsumed)
-        assertEquals(expectedRemainingAfter, quota.requestsRemaining)
+        if (expectedFreeConsumed > 0) {
+            verify { freeQuotaRepository.deductRequests(userId, "openai", expectedFreeConsumed) }
+        } else {
+            verify(exactly = 0) { freeQuotaRepository.deductRequests(any(), any(), any()) }
+        }
     }
 
     @Test
@@ -167,6 +171,7 @@ class AccessServiceTest {
 
         assertTrue(result.allowed)
         assertEquals(future, result.resetAt)
+        verify { freeQuotaRepository.deductRequests(userId, "openai", 1) }
     }
 
     @Test
@@ -179,6 +184,7 @@ class AccessServiceTest {
 
         assertTrue(result.allowed)
         assertEquals(null, result.resetAt)
+        verify { freeQuotaRepository.deductRequests(userId, "openai", 1) }
     }
 
     @Test
@@ -191,7 +197,7 @@ class AccessServiceTest {
         val result = service.checkAndConsume(userId, "gpt-4o-mini")
 
         assertTrue(result.allowed)
-        assertEquals(9, quota.requestsRemaining)
+        verify { freeQuotaRepository.deductRequests(userId, "openai", 1) }
         assertEquals(1, result.freeConsumed)
     }
 

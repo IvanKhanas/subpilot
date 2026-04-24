@@ -71,8 +71,8 @@ class ModelPreferenceServiceContainerTest {
         val userId = newUserId()
         userService.registerUser(userId)
 
-        val providerChanged = modelPreferenceService.setModelPreference(userId, "gpt-4o")
+        val result = modelPreferenceService.setModelPreference(userId, "gpt-4o")
 
-        assertFalse(providerChanged)
+        assertFalse(result.providerChanged)
     }
 }

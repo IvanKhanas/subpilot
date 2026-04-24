@@ -1,5 +1,6 @@
 package com.xeno.subpilot.subscription.repository
 
+import com.xeno.subpilot.subscription.entity.UserRequestBalance
 import org.springframework.stereotype.Repository
 
 @Repository
@@ -25,4 +26,7 @@ class JpaUserRequestBalanceRepository(
         userId: Long,
         provider: String,
     ): Int = repository.findByUserIdAndProvider(userId, provider)?.requestsRemaining ?: 0
+
+    override fun findAllByUserId(userId: Long): List<UserRequestBalance> =
+        repository.findAllByUserId(userId)
 }

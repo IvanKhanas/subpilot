@@ -16,10 +16,18 @@ interface UserFreeQuotaRepository {
         amount: Int,
     )
 
+    fun deductRequests(
+        userId: Long,
+        provider: String,
+        amount: Int,
+    )
+
     fun createAll(
         userId: Long,
         providers: Set<String>,
         initialAmount: Int,
         nextResetAt: LocalDateTime,
     )
+
+    fun findAllByUserId(userId: Long): List<UserFreeQuota>
 }

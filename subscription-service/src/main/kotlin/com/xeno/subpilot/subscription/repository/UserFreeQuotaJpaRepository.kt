@@ -30,4 +30,20 @@ interface UserFreeQuotaJpaRepository : JpaRepository<UserFreeQuota, UserFreeQuot
         provider: String,
         amount: Int,
     )
+
+    @Modifying(clearAutomatically = true)
+    @Query(
+        """
+        UPDATE UserFreeQuota q
+        SET q.requestsRemaining = q.requestsRemaining - :amount
+        WHERE q.userId = :userId AND q.provider = :provider
+        """,
+    )
+    fun deductRequests(
+        userId: Long,
+        provider: String,
+        amount: Int,
+    )
+
+    fun findAllByUserId(userId: Long): List<UserFreeQuota>
 }

@@ -1,5 +1,7 @@
 package com.xeno.subpilot.subscription.repository
 
+import com.xeno.subpilot.subscription.entity.UserRequestBalance
+
 interface UserRequestBalanceRepository {
     fun deductIfSufficient(
         userId: Long,
@@ -17,4 +19,6 @@ interface UserRequestBalanceRepository {
         userId: Long,
         provider: String,
     ): Int
+
+    fun findAllByUserId(userId: Long): List<UserRequestBalance>
 }

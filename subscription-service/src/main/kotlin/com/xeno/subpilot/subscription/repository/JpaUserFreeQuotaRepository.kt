@@ -21,6 +21,12 @@ class JpaUserFreeQuotaRepository(
         amount: Int,
     ) = repository.addRequests(userId, provider, amount)
 
+    override fun deductRequests(
+        userId: Long,
+        provider: String,
+        amount: Int,
+    ) = repository.deductRequests(userId, provider, amount)
+
     override fun createAll(
         userId: Long,
         providers: Set<String>,
@@ -33,4 +39,7 @@ class JpaUserFreeQuotaRepository(
             },
         )
     }
+
+    override fun findAllByUserId(userId: Long): List<UserFreeQuota> =
+        repository.findAllByUserId(userId)
 }
