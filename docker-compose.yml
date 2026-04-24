@@ -11,11 +11,17 @@ services:
       SUBSCRIPTION_DB_USER: ${SUBSCRIPTION_DB_USER}
       SUBSCRIPTION_DB_PASSWORD: ${SUBSCRIPTION_DB_PASSWORD}
       SUBSCRIPTION_GRPC_SERVER_PORT: 9091
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
     ports:
       - "8083:8083"
-      - "9091:9091"
     depends_on:
       postgres:
+        condition: service_healthy
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
         condition: service_healthy
 
   chat-service:
@@ -30,11 +36,62 @@ services:
       SUBSCRIPTION_GRPC_ADDRESS: subscription-service:9091
     ports:
       - "8082:8082"
-      - "9090:9090"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      subscription-service:
+        condition: service_started
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+    environment:
+      PAYMENT_DB_URL: jdbc:postgresql://postgres:5432/payment
+      PAYMENT_DB_USER: payment
+      PAYMENT_DB_PASSWORD: ${PAYMENT_DB_PASSWORD}
+      PAYMENT_GRPC_SERVER_PORT: 9094
+      SUBSCRIPTION_GRPC_ADDRESS: subscription-service:9091
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID}
+      YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY}
+      YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+      subscription-service:
+        condition: service_started
+
+  loyalty-service:
+    build:
+      context: .
+      dockerfile: loyalty-service/Dockerfile
+    environment:
+      LOYALTY_DB_URL: jdbc:postgresql://postgres:5432/${LOYALTY_DB_NAME:-loyalty}
+      LOYALTY_DB_USER: ${LOYALTY_DB_USER}
+      LOYALTY_DB_PASSWORD: ${LOYALTY_DB_PASSWORD}
+      LOYALTY_GRPC_SERVER_PORT: 9095
+      SUBSCRIPTION_GRPC_ADDRESS: subscription-service:9091
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      LOYALTY_CASHBACK_RATE: ${LOYALTY_CASHBACK_RATE:-0.08}
+    ports:
+      - "8085:8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
         condition: service_healthy
       subscription-service:
         condition: service_started
@@ -45,8 +102,12 @@ services:
       dockerfile: tg-bot-service/Dockerfile
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      SUPPORT_OPERATOR_TAG: ${SUPPORT_OPERATOR_TAG:-unknown}
       CHAT_GRPC_ADDRESS: chat-service:9090
       SUBSCRIPTION_GRPC_ADDRESS: subscription-service:9091
+      PAYMENT_GRPC_ADDRESS: payment-service:9094
+      LOYALTY_GRPC_ADDRESS: loyalty-service:9095
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
@@ -55,3 +116,13 @@ services:
         condition: service_healthy
       chat-service:
         condition: service_started
+      payment-service:
+        condition: service_started
+      loyalty-service:
+        condition: service_started
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy

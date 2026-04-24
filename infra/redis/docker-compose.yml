@@ -1,0 +1,36 @@
+services:
+  redis:
+    build: .
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory ${REDIS_MAX_MEMORY:-256mb}
+      --maxmemory-policy volatile-ttl
+      --save ""
+      --appendonly no
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    deploy:
+      resources:
+        limits:
+          memory: 320M
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    restart: no
+    ports:
+      - "5540:5540"
+    volumes:
+      - redisinsight_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redisinsight_data:
+    name: redisinsight_data
