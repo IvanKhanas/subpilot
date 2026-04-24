@@ -20,7 +20,7 @@ CREATE TABLE user_subscription
     provider        VARCHAR(50) NOT NULL,
     earned_requests INTEGER     NOT NULL,
     activated_at    TIMESTAMP   NOT NULL,
-    CONSTRAINT uq_user_subscription_payment_id UNIQUE (payment_id),
+    CONSTRAINT uq_user_subscription_payment_id_provider UNIQUE (payment_id, provider),
     CONSTRAINT fk_user_subscription_subscription_user
         FOREIGN KEY (user_id) REFERENCES subscription_user (user_id),
     CONSTRAINT chk_user_subscription_earned_requests CHECK (earned_requests > 0)

@@ -6,7 +6,7 @@ CREATE TABLE user_free_quota
     user_id            BIGINT      NOT NULL,
     provider           VARCHAR(50) NOT NULL,
     requests_remaining INTEGER     NOT NULL,
-    reset_date         DATE        NOT NULL,
+    next_reset_at      TIMESTAMP   NOT NULL DEFAULT NOW(),
     CONSTRAINT user_free_quota_pkey PRIMARY KEY (user_id, provider),
     CONSTRAINT fk_user_free_quota_subscription_user
         FOREIGN KEY (user_id) REFERENCES subscription_user (user_id),
@@ -14,8 +14,8 @@ CREATE TABLE user_free_quota
 );
 
 --changeset xeno:v2-populate-user-free-quota
-INSERT INTO user_free_quota (user_id, provider, requests_remaining, reset_date)
-SELECT user_id, provider, 10, CURRENT_DATE
+INSERT INTO user_free_quota (user_id, provider, requests_remaining, next_reset_at)
+SELECT user_id, provider, 10, NOW()
 FROM user_request_balance;
 
 --changeset xeno:v2-clear-user-request-balance

@@ -10,6 +10,7 @@ CREATE TABLE payment
     amount               NUMERIC(10, 2) NOT NULL,
     currency             VARCHAR(10) NOT NULL,
     status               VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    bonus_points_used    BIGINT      NOT NULL DEFAULT 0,
     created_at           TIMESTAMP   NOT NULL DEFAULT NOW(),
     updated_at           TIMESTAMP   NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_payment_status CHECK (status IN ('PENDING', 'SUCCEEDED', 'FAILED', 'CANCELLED'))
@@ -23,7 +24,7 @@ CREATE TABLE outbox_payment_event
 (
     id           BIGSERIAL    NOT NULL PRIMARY KEY,
     event_type   VARCHAR(100) NOT NULL,
-    payload      JSONB        NOT NULL,
+    payload      TEXT         NOT NULL,
     created_at   TIMESTAMP    NOT NULL DEFAULT NOW(),
     published_at TIMESTAMP
 );
