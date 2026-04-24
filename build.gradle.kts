@@ -28,6 +28,8 @@ subprojects {
     }
 
     plugins.withId("org.jetbrains.kotlin.jvm") {
+        apply(plugin = "subpilot.license-conventions")
+
         extensions.configure<KotlinJvmProjectExtension> {
             jvmToolchain(21)
         }

@@ -1,3 +1,18 @@
+/*
+ * Copyright 2024 Ivan Khanas
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.xeno.subpilot.subscription.unittests.service
 
 import com.xeno.subpilot.subscription.properties.SubscriptionProperties
@@ -41,7 +56,6 @@ class ModelPreferenceServiceTest {
                     "claude-3-5-sonnet" to "anthropic",
                 ),
             modelCosts = mapOf("gpt-4o" to 3, "gpt-4o-mini" to 1, "claude-3-5-sonnet" to 2),
-            plans = emptyMap(),
         )
 
     private val userId = 7L
@@ -79,9 +93,11 @@ class ModelPreferenceServiceTest {
         every { modelPreferenceRepository.findById(userId) } returns previousModel
         justRun { modelPreferenceRepository.upsert(userId, newModel) }
 
-        val providerChanged = service.setModelPreference(userId, newModel)
+        val result = service.setModelPreference(userId, newModel)
 
-        assertFalse(providerChanged)
+        assertFalse(result.providerChanged)
+        assertEquals(properties.modelCosts[newModel], result.modelCost)
+        assertEquals(properties.modelProviders[newModel], result.provider)
         verify { modelPreferenceRepository.upsert(userId, newModel) }
     }
 
@@ -97,9 +113,11 @@ class ModelPreferenceServiceTest {
         every { modelPreferenceRepository.findById(userId) } returns previousModel
         justRun { modelPreferenceRepository.upsert(userId, newModel) }
 
-        val providerChanged = service.setModelPreference(userId, newModel)
+        val result = service.setModelPreference(userId, newModel)
 
-        assertTrue(providerChanged)
+        assertTrue(result.providerChanged)
+        assertEquals(properties.modelCosts[newModel], result.modelCost)
+        assertEquals(properties.modelProviders[newModel], result.provider)
         verify { modelPreferenceRepository.upsert(userId, newModel) }
     }
 
@@ -108,8 +126,10 @@ class ModelPreferenceServiceTest {
         every { modelPreferenceRepository.findById(userId) } returns null
         justRun { modelPreferenceRepository.upsert(userId, "gpt-4o") }
 
-        val providerChanged = service.setModelPreference(userId, "gpt-4o")
+        val result = service.setModelPreference(userId, "gpt-4o")
 
-        assertFalse(providerChanged)
+        assertFalse(result.providerChanged)
+        assertEquals(3, result.modelCost)
+        assertEquals("openai", result.provider)
     }
 }

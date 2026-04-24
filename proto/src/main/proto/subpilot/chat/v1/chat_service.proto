@@ -9,7 +9,7 @@ option java_multiple_files = true;
 
 service ChatService {
   rpc ProcessMessage(ProcessMessageRequest) returns (ProcessMessageResponse);
-  rpc ClearHistory(ClearHistoryRequest) returns (ClearHistoryResponse);
+  rpc ClearHistory(ClearContextRequest) returns (ClearContextResponse);
 }
 
 message ProcessMessageRequest {
@@ -27,8 +27,8 @@ message ProcessMessageResponse {
   int32 model_cost = 6;
 }
 
-message ClearHistoryRequest {
+message ClearContextRequest {
   int64 chat_id = 1;
 }
 
-message ClearHistoryResponse {}
+message ClearContextResponse {}

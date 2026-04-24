@@ -1,3 +1,18 @@
+/*
+ * Copyright 2024 Ivan Khanas
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.xeno.subpilot.tgbot.command
 
 import com.xeno.subpilot.tgbot.client.ChatClient
@@ -19,7 +34,7 @@ class ModelCommandHandler(
     override val command = "/model"
     override val description = "Set AI model: /model <model_id>"
 
-    override fun handle(message: Message) {
+    override suspend fun handle(message: Message) {
         val chatId = message.chat.id
         val parts = message.text?.split(" ") ?: return
         if (parts.size != 2) {
@@ -40,13 +55,19 @@ class ModelCommandHandler(
         }
         val userId = message.from?.id ?: return
         try {
-            val providerChanged = subscriptionClient.setModelPreference(userId, model.id)
-            if (providerChanged) {
-                chatClient.clearHistory(chatId)
+            val result = subscriptionClient.setModelPreference(userId, model.id)
+            if (result.providerChanged) {
+                chatClient.clearContext(chatId)
             }
+            val providerName = AiProvider.displayNameByKey(result.provider)
             telegramClient.sendMessage(
                 chatId,
-                BotResponses.MODEL_SET_RESPONSE.format(model.displayName),
+                BotResponses.MODEL_SET_RESPONSE.format(
+                    model.displayName,
+                    model.displayName,
+                    result.modelCost,
+                    providerName,
+                ),
             )
         } catch (ex: SubscriptionServiceException) {
             telegramClient.sendMessage(chatId, BotResponses.MODEL_SET_FAILED_RESPONSE.text)

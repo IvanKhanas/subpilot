@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: payment-service
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  datasource:
+    url: ${PAYMENT_DB_URL:jdbc:postgresql://localhost:5432/payment}
+    username: ${PAYMENT_DB_USER:payment}
+    password: ${PAYMENT_DB_PASSWORD:payment}
+  jpa:
+    open-in-view: false
+  liquibase:
+    enabled: false
+  grpc:
+    server:
+      port: ${PAYMENT_GRPC_SERVER_PORT:9094}
+    client:
+      channels:
+        subscription-service:
+          address: ${SUBSCRIPTION_GRPC_ADDRESS:localhost:9091}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+
+
+yookassa:
+  shop-id: ${YOOKASSA_SHOP_ID:dummy}
+  secret-key: ${YOOKASSA_SECRET_KEY:dummy}
+  return-url: ${YOOKASSA_RETURN_URL:dummy}
+
+yookassa-outbox:
+  scheduler-interval: 5s
+  batch-size: 100
+
+
+server:
+  port: ${PAYMENT_SERVER_PORT:8084}

@@ -1,6 +1,8 @@
 spring:
   application:
     name: subscription-service
+  jackson:
+    property-naming-strategy: SNAKE_CASE
   datasource:
     url: ${SUBSCRIPTION_DB_URL:jdbc:postgresql://localhost:5432/subscription}
     username: ${SUBSCRIPTION_DB_USER:subscription}
@@ -12,6 +14,13 @@ spring:
   grpc:
     server:
       port: ${SUBSCRIPTION_GRPC_SERVER_PORT:9091}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: subscription-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
 subscription:
   free-quota: ${SUBSCRIPTION_FREE_QUOTA:10}
@@ -25,13 +34,6 @@ subscription:
     gpt-4o-mini: 1
     gpt-4o: 2
     gpt-4-turbo: 3
-  plans:
-    openai-basic:
-      provider: openai
-      requests: 100
-    openai-pro:
-      provider: openai
-      requests: 300
 
 server:
   port: ${SUBSCRIPTION_SERVER_PORT:8083}

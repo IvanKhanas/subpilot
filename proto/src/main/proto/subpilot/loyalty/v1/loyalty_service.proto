@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package subpilot.loyalty.v1;
+
+option java_package = "com.xeno.subpilot.proto.loyalty.v1";
+option java_multiple_files = true;
+
+service LoyaltyService {
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+  rpc SpendPoints(SpendPointsRequest) returns (SpendPointsResponse);
+}
+
+message GetBalanceRequest {
+  int64 user_id = 1;
+}
+
+message GetBalanceResponse {
+  int64 points = 1;
+}
+
+message SpendPointsRequest {
+  int64 user_id = 1;
+  string plan_id = 2;
+  string idempotency_key = 3;
+}
+
+message SpendPointsResponse {
+  bool success = 1;
+  SpendDenialReason denial_reason = 2;
+}
+
+enum SpendDenialReason {
+  SPEND_DENIAL_REASON_UNSPECIFIED = 0;
+  SPEND_DENIAL_REASON_INSUFFICIENT_POINTS = 1;
+  SPEND_DENIAL_REASON_UNKNOWN_PLAN = 2;
+}

@@ -1,3 +1,18 @@
+/*
+ * Copyright 2024 Ivan Khanas
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.xeno.subpilot.tgbot.unittests.runtime
 
 import com.xeno.subpilot.tgbot.client.TelegramClient
@@ -12,6 +27,8 @@ import com.xeno.subpilot.tgbot.message.CallbackHandler
 import com.xeno.subpilot.tgbot.message.MessageHandler
 import com.xeno.subpilot.tgbot.runtime.TelegramMessageHandler
 import com.xeno.subpilot.tgbot.ux.buttons.TextButtonHandler
+import io.mockk.coJustRun
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
@@ -20,6 +37,8 @@ import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+
+import kotlinx.coroutines.test.runTest
 
 @ExtendWith(MockKExtension::class)
 class TelegramMessageHandlerTest {
@@ -66,125 +85,135 @@ class TelegramMessageHandlerTest {
     }
 
     @Test
-    fun `dispatches callback query to matching handler and answers callback`() {
-        val callback = CallbackQuery(id = "cb-1", from = User(id = 42), data = "start_chat")
-        val update = Update(updateId = 1, callbackQuery = callback)
+    fun `dispatches callback query to matching handler and answers callback`() =
+        runTest {
+            val callback = CallbackQuery(id = "cb-1", from = User(id = 42), data = "start_chat")
+            val update = Update(updateId = 1, callbackQuery = callback)
 
-        every { startChatCallback.supports("start_chat") } returns true
-        justRun { startChatCallback.handle(callback) }
-        justRun { telegramClient.answerCallbackQuery("cb-1") }
+            every { startChatCallback.supports("start_chat") } returns true
+            coJustRun { startChatCallback.handle(callback) }
+            justRun { telegramClient.answerCallbackQuery("cb-1") }
 
-        handler.onUpdate(update)
+            handler.onUpdate(update)
 
-        verify { startChatCallback.handle(callback) }
-        verify { telegramClient.answerCallbackQuery("cb-1") }
-    }
-
-    @Test
-    fun `answers callback even when no matching handler found`() {
-        val callback = CallbackQuery(id = "cb-2", from = User(id = 42), data = "unknown_action")
-        val update = Update(updateId = 2, callbackQuery = callback)
-
-        every { startChatCallback.supports("unknown_action") } returns false
-        every { helpCallback.supports("unknown_action") } returns false
-        justRun { telegramClient.answerCallbackQuery("cb-2") }
-
-        handler.onUpdate(update)
-
-        verify(exactly = 0) { startChatCallback.handle(any()) }
-        verify(exactly = 0) { helpCallback.handle(any()) }
-        verify { telegramClient.answerCallbackQuery("cb-2") }
-    }
-
-    @Test
-    fun `routes slash command to matching BotCommand handler`() {
-        val message = message("/start")
-        val update = Update(updateId = 3, message = message)
-
-        justRun { startCommand.handle(message) }
-
-        handler.onUpdate(update)
-
-        verify { startCommand.handle(message) }
-    }
-
-    @Test
-    fun `strips bot mention from command before matching`() {
-        val message = message("/help@MyBot")
-        val update = Update(updateId = 4, message = message)
-
-        justRun { helpCommand.handle(message) }
-
-        handler.onUpdate(update)
-
-        verify { helpCommand.handle(message) }
-    }
-
-    @Test
-    fun `sends unknown command response for unrecognized command`() {
-        val message = message("/unknown")
-        val update = Update(updateId = 5, message = message)
-        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
-
-        handler.onUpdate(update)
-
-        verify(exactly = 0) { startCommand.handle(any()) }
-        verify(exactly = 0) { helpCommand.handle(any()) }
-        verify {
-            telegramClient.sendMessage(
-                chatId = 100,
-                text = BotResponses.UNKNOWN_COMMAND_RESPONSE.text,
-            )
+            coVerify { startChatCallback.handle(callback) }
+            verify { telegramClient.answerCallbackQuery("cb-1") }
         }
-    }
 
     @Test
-    fun `routes text to matching TextButtonHandler`() {
-        val message = message("Start chat")
-        val update = Update(updateId = 6, message = message)
+    fun `answers callback even when no matching handler found`() =
+        runTest {
+            val callback = CallbackQuery(id = "cb-2", from = User(id = 42), data = "unknown_action")
+            val update = Update(updateId = 2, callbackQuery = callback)
 
-        every { chatTextButton.supports("Start chat") } returns true
-        justRun { chatTextButton.handle(message) }
+            every { startChatCallback.supports("unknown_action") } returns false
+            every { helpCallback.supports("unknown_action") } returns false
+            justRun { telegramClient.answerCallbackQuery("cb-2") }
 
-        handler.onUpdate(update)
+            handler.onUpdate(update)
 
-        verify { chatTextButton.handle(message) }
-        verify(exactly = 0) { messageHandler.handle(any()) }
-    }
-
-    @Test
-    fun `falls through to default MessageHandler when no text button matches`() {
-        val message = message("Hello, bot!")
-        val update = Update(updateId = 7, message = message)
-
-        every { chatTextButton.supports("Hello, bot!") } returns false
-        every { helpTextButton.supports("Hello, bot!") } returns false
-        justRun { messageHandler.handle(message) }
-
-        handler.onUpdate(update)
-
-        verify { messageHandler.handle(message) }
-    }
+            coVerify(exactly = 0) { startChatCallback.handle(any()) }
+            coVerify(exactly = 0) { helpCallback.handle(any()) }
+            verify { telegramClient.answerCallbackQuery("cb-2") }
+        }
 
     @Test
-    fun `ignores update with neither message nor callback`() {
-        val update = Update(updateId = 8)
+    fun `routes slash command to matching BotCommand handler`() =
+        runTest {
+            val message = message("/start")
+            val update = Update(updateId = 3, message = message)
 
-        handler.onUpdate(update)
+            coJustRun { startCommand.handle(message) }
 
-        verify(exactly = 0) { telegramClient.answerCallbackQuery(any()) }
-        verify(exactly = 0) { messageHandler.handle(any()) }
-    }
+            handler.onUpdate(update)
+
+            coVerify { startCommand.handle(message) }
+        }
 
     @Test
-    fun `ignores message with null text`() {
-        val message = Message(messageId = 1, chat = Chat(id = 100), text = null)
-        val update = Update(updateId = 9, message = message)
+    fun `strips bot mention from command before matching`() =
+        runTest {
+            val message = message("/help@MyBot")
+            val update = Update(updateId = 4, message = message)
 
-        handler.onUpdate(update)
+            coJustRun { helpCommand.handle(message) }
 
-        verify(exactly = 0) { messageHandler.handle(any()) }
-    }
+            handler.onUpdate(update)
+
+            coVerify { helpCommand.handle(message) }
+        }
+
+    @Test
+    fun `sends unknown command response for unrecognized command`() =
+        runTest {
+            val message = message("/unknown")
+            val update = Update(updateId = 5, message = message)
+            every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
+
+            handler.onUpdate(update)
+
+            coVerify(exactly = 0) { startCommand.handle(any()) }
+            coVerify(exactly = 0) { helpCommand.handle(any()) }
+            verify {
+                telegramClient.sendMessage(
+                    chatId = 100,
+                    text = BotResponses.UNKNOWN_COMMAND_RESPONSE.text,
+                )
+            }
+        }
+
+    @Test
+    fun `routes text to matching TextButtonHandler`() =
+        runTest {
+            val message = message("Start chat")
+            val update = Update(updateId = 6, message = message)
+
+            every { chatTextButton.supports("Start chat") } returns true
+            coJustRun { chatTextButton.handle(message) }
+            justRun { telegramClient.deleteMessage(any(), any()) }
+
+            handler.onUpdate(update)
+
+            coVerify { chatTextButton.handle(message) }
+            coVerify(exactly = 0) { messageHandler.handle(any()) }
+        }
+
+    @Test
+    fun `falls through to default MessageHandler when no text button matches`() =
+        runTest {
+            val message = message("Hello, bot!")
+            val update = Update(updateId = 7, message = message)
+
+            every { chatTextButton.supports("Hello, bot!") } returns false
+            every { helpTextButton.supports("Hello, bot!") } returns false
+            coJustRun { messageHandler.handle(message) }
+
+            handler.onUpdate(update)
+
+            coVerify { messageHandler.handle(message) }
+        }
+
+    @Test
+    fun `ignores update with neither message nor callback`() =
+        runTest {
+            val update = Update(updateId = 8)
+
+            handler.onUpdate(update)
+
+            verify(exactly = 0) { telegramClient.answerCallbackQuery(any()) }
+            coVerify(exactly = 0) { messageHandler.handle(any()) }
+        }
+
+    @Test
+    fun `ignores message with null text`() =
+        runTest {
+            val message = Message(messageId = 1, chat = Chat(id = 100), text = null)
+            val update = Update(updateId = 9, message = message)
+
+            handler.onUpdate(update)
+
+            coVerify(exactly = 0) { messageHandler.handle(any()) }
+        }
 
     private fun message(text: String) =
         Message(

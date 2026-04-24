@@ -1,3 +1,18 @@
+/*
+ * Copyright 2024 Ivan Khanas
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.xeno.subpilot.tgbot.unittests.runtime
 
 import com.xeno.subpilot.tgbot.client.TelegramClient
@@ -9,6 +24,9 @@ import com.xeno.subpilot.tgbot.dto.Update
 import com.xeno.subpilot.tgbot.properties.TelegramBotProperties
 import com.xeno.subpilot.tgbot.runtime.TelegramLongPollingService
 import com.xeno.subpilot.tgbot.runtime.TelegramMessageHandler
+import io.mockk.coEvery
+import io.mockk.coJustRun
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
@@ -52,7 +70,7 @@ class TelegramLongPollingServiceTest {
         every { helpCommand.command } returns "/help"
         every { helpCommand.description } returns "Show available commands"
         justRun { telegramClient.setMyCommands(any()) }
-        justRun { messageHandler.onUpdate(any()) }
+        coJustRun { messageHandler.onUpdate(any()) }
 
         service =
             TelegramLongPollingService(
@@ -93,7 +111,7 @@ class TelegramLongPollingServiceTest {
 
         service.start()
 
-        verify(timeout = 1500) { messageHandler.onUpdate(update) }
+        coVerify(timeout = 1500) { messageHandler.onUpdate(update) }
         verify(timeout = 1500) { telegramClient.getUpdates(6, 15) }
     }
 
@@ -104,10 +122,10 @@ class TelegramLongPollingServiceTest {
         every { telegramClient.getUpdates(null, 15) } returns listOf(badUpdate)
         every { telegramClient.getUpdates(2, 15) } returns listOf(goodUpdate)
         every { telegramClient.getUpdates(3, 15) } throws InterruptedException()
-        every { messageHandler.onUpdate(badUpdate) } throws RuntimeException("crash!")
+        coEvery { messageHandler.onUpdate(badUpdate) } throws RuntimeException("crash!")
 
         service.start()
 
-        verify(timeout = 2000) { messageHandler.onUpdate(goodUpdate) }
+        coVerify(timeout = 2000) { messageHandler.onUpdate(goodUpdate) }
     }
 }

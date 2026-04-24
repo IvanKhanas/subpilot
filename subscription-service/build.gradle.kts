@@ -20,6 +20,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlin.logging)
     implementation(libs.liquibase.core)
+    implementation(libs.spring.kafka)
 
     implementation(project(":proto"))
     runtimeOnly(project(":migrations"))

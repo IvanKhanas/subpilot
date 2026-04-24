@@ -1,14 +1,29 @@
+/*
+ * Copyright 2024 Ivan Khanas
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.xeno.subpilot.chat.grpc
 
 import com.xeno.subpilot.chat.client.OpenAiChatClient
 import com.xeno.subpilot.chat.client.SubscriptionGrpcClient
 import com.xeno.subpilot.chat.service.ChatHistoryService
 import com.xeno.subpilot.proto.chat.v1.ChatServiceGrpcKt
-import com.xeno.subpilot.proto.chat.v1.ClearHistoryRequest
-import com.xeno.subpilot.proto.chat.v1.ClearHistoryResponse
+import com.xeno.subpilot.proto.chat.v1.ClearContextRequest
+import com.xeno.subpilot.proto.chat.v1.ClearContextResponse
 import com.xeno.subpilot.proto.chat.v1.ProcessMessageRequest
 import com.xeno.subpilot.proto.chat.v1.ProcessMessageResponse
-import com.xeno.subpilot.proto.chat.v1.clearHistoryResponse
+import com.xeno.subpilot.proto.chat.v1.clearContextResponse
 import com.xeno.subpilot.proto.chat.v1.processMessageResponse
 import com.xeno.subpilot.proto.subscription.v1.CheckAccessResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -88,7 +103,7 @@ class ChatServiceGrpc(
         }
     }
 
-    override suspend fun clearHistory(request: ClearHistoryRequest): ClearHistoryResponse {
+    override suspend fun clearHistory(request: ClearContextRequest): ClearContextResponse {
         logger.atDebug {
             message = "grpc_clear_history"
             payload = mapOf("chat_id" to request.chatId)
@@ -96,6 +111,6 @@ class ChatServiceGrpc(
         withContext(ioDispatcher) {
             chatHistoryService.clear(request.chatId)
         }
-        return clearHistoryResponse { }
+        return clearContextResponse { }
     }
 }

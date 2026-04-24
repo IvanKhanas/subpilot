@@ -13,6 +13,15 @@ spring:
           address: ${CHAT_GRPC_ADDRESS:localhost:9090}
         subscription-service:
           address: ${SUBSCRIPTION_GRPC_ADDRESS:localhost:9091}
+        payment-service:
+          address: ${PAYMENT_GRPC_ADDRESS:localhost:9094}
+        loyalty-service:
+          address: ${LOYALTY_GRPC_ADDRESS:localhost:9095}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: tg-bot-service
+      auto-offset-reset: earliest
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -29,7 +38,7 @@ navigation:
   stack-ttl: ${NAVIGATION_STACK_TTL:PT20M}
 
 support:
-  support-tag: ${SUPPORT_OPERATOR_TAG:unknown}
+  operator-tag: ${SUPPORT_OPERATOR_TAG:unknown}
 
 grpc:
   retry:
