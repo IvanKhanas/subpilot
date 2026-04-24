@@ -67,6 +67,7 @@ jobs:
             subscription-service/build/reports/jacoco/test
             tg-bot-service/build/reports/jacoco/test
             payment-service/build/reports/jacoco/test
+            loyalty-service/build/reports/jacoco/test
 
   lint:
     name: Lint
