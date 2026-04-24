@@ -28,11 +28,12 @@ class DeclineBonusSpendCallbackHandler(
     override fun supports(data: String) = data.startsWith(CALLBACK_PREFIX)
 
     override suspend fun handle(callbackQuery: CallbackQuery) {
-        val chatId = callbackQuery.message?.chat?.id ?: return
+        val message = callbackQuery.message ?: return
+        val chatId = message.chat.id
         val userId = callbackQuery.from?.id ?: return
         val planId = callbackQuery.data?.removePrefix(CALLBACK_PREFIX) ?: return
-        val messageId = callbackQuery.message?.messageId ?: return
-        val promptText = callbackQuery.message?.text ?: return
+        val messageId = message.messageId
+        val promptText = message.text ?: return
         bonusPurchaseService.declineBonusSpend(chatId, userId, planId, messageId, promptText)
     }
 

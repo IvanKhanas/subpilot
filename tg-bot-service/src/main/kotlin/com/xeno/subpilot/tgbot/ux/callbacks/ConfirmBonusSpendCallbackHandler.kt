@@ -30,15 +30,16 @@ class ConfirmBonusSpendCallbackHandler(
     override fun supports(data: String) = data.startsWith(CALLBACK_PREFIX)
 
     override suspend fun handle(callbackQuery: CallbackQuery) {
-        val chatId = callbackQuery.message?.chat?.id ?: return
+        val message = callbackQuery.message ?: return
+        val chatId = message.chat.id
         val userId = callbackQuery.from?.id ?: return
         val remaining = callbackQuery.data?.removePrefix(CALLBACK_PREFIX) ?: return
         val lastColon = remaining.lastIndexOf(':')
         if (lastColon < 0) return
         val planId = remaining.substring(0, lastColon)
         val idempotencyKey = UUID.fromString(remaining.substring(lastColon + 1))
-        val messageId = callbackQuery.message?.messageId ?: return
-        val promptText = callbackQuery.message?.text ?: return
+        val messageId = message.messageId
+        val promptText = message.text ?: return
         bonusPurchaseService.confirmBonusSpend(
             chatId,
             userId,
