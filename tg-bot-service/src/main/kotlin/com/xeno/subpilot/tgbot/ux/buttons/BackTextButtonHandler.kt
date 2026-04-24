@@ -8,7 +8,7 @@ import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 
 @Component
-@Order(6)
+@Order(8)
 class BackTextButtonHandler(
     private val navigationService: NavigationService,
     private val screenRenderer: ScreenRenderer,
@@ -16,7 +16,7 @@ class BackTextButtonHandler(
 
     override fun supports(text: String) = text == BotButtons.BTN_BACK
 
-    override fun handle(message: Message) {
+    override suspend fun handle(message: Message) {
         val screen = navigationService.pop(message.chat.id) ?: BotScreen.MAIN_MENU
         screenRenderer.render(message.chat.id, screen)
     }

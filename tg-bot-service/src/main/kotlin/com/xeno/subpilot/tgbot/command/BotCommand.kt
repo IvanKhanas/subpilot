@@ -6,5 +6,5 @@ interface BotCommand {
     val command: String
     val description: String
 
-    fun handle(message: Message)
+    suspend fun handle(message: Message)
 }

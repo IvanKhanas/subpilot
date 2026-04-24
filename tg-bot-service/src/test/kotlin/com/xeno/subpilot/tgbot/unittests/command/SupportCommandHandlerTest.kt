@@ -13,6 +13,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
+import kotlinx.coroutines.test.runTest
+
 @ExtendWith(MockKExtension::class)
 class SupportCommandHandlerTest {
 
@@ -31,11 +33,12 @@ class SupportCommandHandlerTest {
     }
 
     @Test
-    fun `handle sends message containing operator tag`() {
-        val message = Message(messageId = 1L, chat = Chat(id = chatId), text = "/support")
+    fun `handle sends message containing operator tag`() =
+        runTest {
+            val message = Message(messageId = 1L, chat = Chat(id = chatId), text = "/support")
 
-        handler.handle(message)
+            handler.handle(message)
 
-        verify { telegramClient.sendMessage(chatId, match { it.contains(operatorTag) }) }
-    }
+            verify { telegramClient.sendMessage(chatId, match { it.contains(operatorTag) }) }
+        }
 }

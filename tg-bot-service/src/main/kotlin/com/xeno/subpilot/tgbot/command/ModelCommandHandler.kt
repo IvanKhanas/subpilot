@@ -19,7 +19,7 @@ class ModelCommandHandler(
     override val command = "/model"
     override val description = "Set AI model: /model <model_id>"
 
-    override fun handle(message: Message) {
+    override suspend fun handle(message: Message) {
         val chatId = message.chat.id
         val parts = message.text?.split(" ") ?: return
         if (parts.size != 2) {
@@ -40,13 +40,19 @@ class ModelCommandHandler(
         }
         val userId = message.from?.id ?: return
         try {
-            val providerChanged = subscriptionClient.setModelPreference(userId, model.id)
-            if (providerChanged) {
-                chatClient.clearHistory(chatId)
+            val result = subscriptionClient.setModelPreference(userId, model.id)
+            if (result.providerChanged) {
+                chatClient.clearContext(chatId)
             }
+            val providerName = AiProvider.displayNameByKey(result.provider)
             telegramClient.sendMessage(
                 chatId,
-                BotResponses.MODEL_SET_RESPONSE.format(model.displayName),
+                BotResponses.MODEL_SET_RESPONSE.format(
+                    model.displayName,
+                    model.displayName,
+                    result.modelCost,
+                    providerName,
+                ),
             )
         } catch (ex: SubscriptionServiceException) {
             telegramClient.sendMessage(chatId, BotResponses.MODEL_SET_FAILED_RESPONSE.text)

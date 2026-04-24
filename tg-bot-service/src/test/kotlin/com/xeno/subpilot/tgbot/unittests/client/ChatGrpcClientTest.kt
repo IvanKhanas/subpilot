@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 import kotlin.test.assertEquals
 
+import kotlinx.coroutines.runBlocking
+
 @ExtendWith(MockKExtension::class)
 class ChatGrpcClientTest {
 
@@ -28,7 +30,17 @@ class ChatGrpcClientTest {
 
     @BeforeEach
     fun setUp() {
-        client = ChatGrpcClient(stub, GrpcRetry(GrpcRetryProperties(maxAttempts = 1)))
+        client =
+            ChatGrpcClient(
+                stub,
+                GrpcRetry(
+                    GrpcRetryProperties(
+                        maxAttempts = 1,
+                        initialBackoffMs = 0,
+                        backoffMultiplier = 1.0,
+                    ),
+                ),
+            )
     }
 
     @Test
@@ -39,7 +51,7 @@ class ChatGrpcClientTest {
                 .setText("AI response")
                 .build()
 
-        val result = client.processMessage(userId = 1L, chatId = 2L, text = "hello")
+        val result = runBlocking { client.processMessage(userId = 1L, chatId = 2L, text = "hello") }
 
         assertEquals("AI response", result.text)
     }
@@ -49,7 +61,7 @@ class ChatGrpcClientTest {
         coEvery { stub.processMessage(any(), any()) } throws StatusException(Status.UNAVAILABLE)
 
         assertThrows<ChatServiceException> {
-            client.processMessage(userId = 1L, chatId = 2L, text = "hello")
+            runBlocking { client.processMessage(userId = 1L, chatId = 2L, text = "hello") }
         }
     }
 }

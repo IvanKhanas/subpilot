@@ -20,13 +20,13 @@ class StartCommandHandler(
     override val command = "/start"
     override val description = "Start the bot"
 
-    override fun handle(message: Message) {
+    override suspend fun handle(message: Message) {
         navigationService.clear(message.chat.id)
         registerAndGreet(message)
         screenRenderer.render(message.chat.id, BotScreen.MAIN_MENU)
     }
 
-    internal fun registerAndGreet(message: Message) {
+    internal suspend fun registerAndGreet(message: Message) {
         val chatId = message.chat.id
         val userName = message.from?.firstName ?: DEFAULT_USERNAME
         val result = message.from?.id?.let { subscriptionClient.registerUser(it) }

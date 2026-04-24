@@ -6,12 +6,12 @@ import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 
 @Component
-@Order(2)
+@Order(1)
 class ChatTextButtonHandler(
     private val startCommandHandler: StartCommandHandler,
 ) : TextButtonHandler {
 
     override fun supports(text: String) = text == BotButtons.BTN_START_CHAT
 
-    override fun handle(message: Message) = startCommandHandler.registerAndGreet(message)
+    override suspend fun handle(message: Message) = startCommandHandler.registerAndGreet(message)
 }

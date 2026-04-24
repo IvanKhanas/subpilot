@@ -25,14 +25,14 @@ class TelegramMessageHandler(
 
     private val commandHandlers = botCommands.associateBy { it.command }
 
-    override fun onUpdate(update: Update) {
+    override suspend fun onUpdate(update: Update) {
         when {
             update.callbackQuery != null -> handleCallback(update.callbackQuery)
             update.message?.text != null -> handleMessage(update.message)
         }
     }
 
-    private fun handleCallback(callback: CallbackQuery) {
+    private suspend fun handleCallback(callback: CallbackQuery) {
         val data = callback.data ?: return
         logger.atDebug {
             message = "telegram_callback_received"
@@ -52,7 +52,7 @@ class TelegramMessageHandler(
         telegramClient.answerCallbackQuery(callback.id)
     }
 
-    private fun handleMessage(message: Message) {
+    private suspend fun handleMessage(message: Message) {
         val text = message.text ?: return
         when {
             text.startsWith("/") -> handleCommand(message, text)
@@ -60,6 +60,7 @@ class TelegramMessageHandler(
                 val buttonHandler = textButtonHandlers.find { it.supports(text) }
                 if (buttonHandler != null) {
                     buttonHandler.handle(message)
+                    telegramClient.deleteMessage(message.chat.id, message.messageId)
                 } else {
                     messageHandler.handle(message)
                 }
@@ -67,7 +68,7 @@ class TelegramMessageHandler(
         }
     }
 
-    private fun handleCommand(
+    private suspend fun handleCommand(
         message: Message,
         text: String,
     ) {

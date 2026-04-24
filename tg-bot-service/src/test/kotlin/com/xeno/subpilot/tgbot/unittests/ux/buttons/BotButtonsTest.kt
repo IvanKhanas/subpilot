@@ -16,16 +16,40 @@ class BotButtonsTest {
     }
 
     @Test
-    fun `main menu has choose model and help buttons in second row`() {
+    fun `main menu has choose model and clear context in second row`() {
         val keyboard = BotButtons.mainMenu.keyboard
 
         assertEquals(BotButtons.BTN_CHOOSE_MODEL, keyboard[1][0].text)
-        assertEquals(BotButtons.BTN_HELP, keyboard[1][1].text)
+        assertEquals(BotButtons.CLEAR_CONTEXT, keyboard[1][1].text)
     }
 
     @Test
-    fun `main menu has three rows`() {
-        assertEquals(3, BotButtons.mainMenu.keyboard.size)
+    fun `main menu has premium and balance in third row`() {
+        val keyboard = BotButtons.mainMenu.keyboard
+
+        assertEquals(BotButtons.PREMIUM, keyboard[2][0].text)
+        assertEquals(BotButtons.BALANCE, keyboard[2][1].text)
+    }
+
+    @Test
+    fun `main menu has bonus and help in fourth row`() {
+        val keyboard = BotButtons.mainMenu.keyboard
+
+        assertEquals(BotButtons.BONUS, keyboard[3][0].text)
+        assertEquals(BotButtons.BTN_HELP, keyboard[3][1].text)
+    }
+
+    @Test
+    fun `main menu has support alone in fifth row`() {
+        val keyboard = BotButtons.mainMenu.keyboard
+
+        assertEquals(BotButtons.SUPPORT, keyboard[4][0].text)
+        assertEquals(1, keyboard[4].size)
+    }
+
+    @Test
+    fun `main menu has five rows`() {
+        assertEquals(5, BotButtons.mainMenu.keyboard.size)
     }
 
     @Test

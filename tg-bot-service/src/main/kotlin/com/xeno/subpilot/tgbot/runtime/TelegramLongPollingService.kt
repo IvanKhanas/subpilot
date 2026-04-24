@@ -101,7 +101,7 @@ class TelegramLongPollingService(
         }
     }
 
-    private fun handleUpdate(update: Update) {
+    private suspend fun handleUpdate(update: Update) {
         try {
             messageHandler.onUpdate(update)
         } catch (ex: Exception) {

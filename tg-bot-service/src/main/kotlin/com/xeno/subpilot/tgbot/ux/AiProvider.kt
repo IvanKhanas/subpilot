@@ -2,10 +2,12 @@ package com.xeno.subpilot.tgbot.ux
 
 enum class AiProvider(
     val displayName: String,
+    val providerKey: String,
     val models: List<AiModel>,
 ) {
     OPENAI(
-        "֎OpenAI",
+        "֎ OpenAI",
+        "openai",
         listOf(
             AiModel("gpt-4o", "GPT-4o"),
             AiModel("gpt-4o-mini", "GPT-4o mini"),
@@ -31,6 +33,10 @@ enum class AiProvider(
         fun findModelById(id: String): AiModel? = modelById[id]
 
         fun findProviderByModelId(id: String): AiProvider? = providerByModelId[id]
+
+        fun displayNameByKey(key: String): String =
+            entries.find { it.providerKey == key }?.displayName
+                ?: key.replaceFirstChar { it.uppercase() }
     }
 }
 

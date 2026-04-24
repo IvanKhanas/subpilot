@@ -14,6 +14,11 @@ spring:
       host: localhost
       port: 6379
       password: ""
+  kafka:
+    bootstrap-servers: localhost:9999
+    consumer:
+      group-id: tg-bot-service
+      auto-offset-reset: earliest
 
 telegram:
   bot:
@@ -25,3 +30,9 @@ navigation:
 
 support:
   operator-tag: "@test_support"
+
+grpc:
+  retry:
+    max-attempts: 1
+    initial-backoff-ms: 1
+    backoff-multiplier: 1.0

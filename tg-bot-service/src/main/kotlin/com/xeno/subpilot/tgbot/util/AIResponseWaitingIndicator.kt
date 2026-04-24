@@ -13,9 +13,9 @@ private const val FRAME_DELAY_MS = 200L
 class AIResponseWaitingIndicator(
     private val telegramClient: TelegramClient,
 ) {
-    fun <T> wrap(
+    suspend fun <T> wrap(
         chatId: Long,
-        block: () -> T,
+        block: suspend () -> T,
     ): T {
         val messageId =
             telegramClient.sendMessage(chatId, BotResponses.WAITING_RESPONSE.text)

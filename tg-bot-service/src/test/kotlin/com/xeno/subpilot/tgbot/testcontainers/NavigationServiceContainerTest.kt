@@ -92,8 +92,6 @@ class NavigationServiceContainerTest {
         val chatId = randomChatId()
         service.push(chatId, BotScreen.MAIN_MENU)
 
-        Thread.sleep(2500)
-
-        assertNull(service.pop(chatId))
+        awaitCondition(timeoutMs = 5000) { service.pop(chatId) == null }
     }
 }

@@ -13,7 +13,7 @@ class HelpCommandHandler(
     override val command = "/help"
     override val description = "Show available commands"
 
-    override fun handle(message: Message) {
+    override suspend fun handle(message: Message) {
         telegramClient.sendMessage(
             chatId = message.chat.id,
             text = BotResponses.HELP_RESPONSE.text,

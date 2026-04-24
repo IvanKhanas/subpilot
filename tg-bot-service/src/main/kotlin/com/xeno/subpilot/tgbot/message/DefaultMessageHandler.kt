@@ -26,7 +26,7 @@ class DefaultMessageHandler(
     private val waitingIndicator: AIResponseWaitingIndicator,
 ) : MessageHandler {
 
-    override fun handle(message: Message) {
+    override suspend fun handle(message: Message) {
         val userId = message.from?.id ?: return
         val chatId = message.chat.id
         val text = message.text ?: return
@@ -46,7 +46,7 @@ class DefaultMessageHandler(
         sendSuccessResponse(chatId, response)
     }
 
-    private fun callChatService(
+    private suspend fun callChatService(
         userId: Long,
         chatId: Long,
         text: String,

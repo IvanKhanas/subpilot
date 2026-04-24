@@ -14,6 +14,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
+import kotlinx.coroutines.runBlocking
+
 @ExtendWith(MockKExtension::class)
 class HelpCommandHandlerTest {
 
@@ -32,7 +34,7 @@ class HelpCommandHandlerTest {
     fun `sends help response text`() {
         val message = Message(chat = Chat(id = 1), text = "/help")
 
-        helpCommandHandler.handle(message)
+        runBlocking { helpCommandHandler.handle(message) }
 
         verify {
             telegramClient.sendMessage(
@@ -46,7 +48,7 @@ class HelpCommandHandlerTest {
     fun `sends message to message chat id`() {
         val message = Message(chat = Chat(id = 123456789L), text = "/help")
 
-        helpCommandHandler.handle(message)
+        runBlocking { helpCommandHandler.handle(message) }
 
         verify {
             telegramClient.sendMessage(
@@ -60,7 +62,7 @@ class HelpCommandHandlerTest {
     fun `calls telegramClient sendMessage exactly once`() {
         val message = Message(chat = Chat(id = 1), text = "/help")
 
-        helpCommandHandler.handle(message)
+        runBlocking { helpCommandHandler.handle(message) }
 
         verify(exactly = 1) { telegramClient.sendMessage(any(), any(), any(), any()) }
     }

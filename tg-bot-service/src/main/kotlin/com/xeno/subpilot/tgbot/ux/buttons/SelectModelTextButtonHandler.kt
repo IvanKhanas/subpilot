@@ -11,7 +11,7 @@ import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 
 @Component
-@Order(5)
+@Order(11)
 class SelectModelTextButtonHandler(
     private val telegramClient: TelegramClient,
     private val subscriptionClient: SubscriptionClient,
@@ -20,17 +20,23 @@ class SelectModelTextButtonHandler(
 
     override fun supports(text: String) = AiProvider.findModelByDisplayName(text) != null
 
-    override fun handle(message: Message) {
+    override suspend fun handle(message: Message) {
         val userId = message.from?.id ?: return
         val model = AiProvider.findModelByDisplayName(message.text ?: return) ?: return
         try {
-            val providerChanged = subscriptionClient.setModelPreference(userId, model.id)
-            if (providerChanged) {
-                chatClient.clearHistory(message.chat.id)
+            val result = subscriptionClient.setModelPreference(userId, model.id)
+            if (result.providerChanged) {
+                chatClient.clearContext(message.chat.id)
             }
+            val providerName = AiProvider.displayNameByKey(result.provider)
             telegramClient.sendMessage(
                 message.chat.id,
-                BotResponses.MODEL_SET_RESPONSE.format(model.displayName),
+                BotResponses.MODEL_SET_RESPONSE.format(
+                    model.displayName,
+                    model.displayName,
+                    result.modelCost,
+                    providerName,
+                ),
                 BotButtons.mainMenu,
             )
         } catch (ex: SubscriptionServiceException) {

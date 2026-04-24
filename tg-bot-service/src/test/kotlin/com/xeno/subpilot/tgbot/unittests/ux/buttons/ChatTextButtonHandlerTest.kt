@@ -5,15 +5,17 @@ import com.xeno.subpilot.tgbot.dto.Chat
 import com.xeno.subpilot.tgbot.dto.Message
 import com.xeno.subpilot.tgbot.ux.buttons.BotButtons
 import com.xeno.subpilot.tgbot.ux.buttons.ChatTextButtonHandler
+import io.mockk.coJustRun
+import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import io.mockk.justRun
-import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+
+import kotlinx.coroutines.test.runTest
 
 @ExtendWith(MockKExtension::class)
 class ChatTextButtonHandlerTest {
@@ -26,7 +28,7 @@ class ChatTextButtonHandlerTest {
     @BeforeEach
     fun setUp() {
         handler = ChatTextButtonHandler(startCommandHandler)
-        justRun { startCommandHandler.registerAndGreet(any()) }
+        coJustRun { startCommandHandler.registerAndGreet(any()) }
     }
 
     @Test
@@ -45,11 +47,12 @@ class ChatTextButtonHandlerTest {
     }
 
     @Test
-    fun `handle delegates to registerAndGreet`() {
-        val message = Message(chat = Chat(id = 42L), text = BotButtons.BTN_START_CHAT)
+    fun `handle delegates to registerAndGreet`() =
+        runTest {
+            val message = Message(chat = Chat(id = 42L), text = BotButtons.BTN_START_CHAT)
 
-        handler.handle(message)
+            handler.handle(message)
 
-        verify { startCommandHandler.registerAndGreet(message) }
-    }
+            coVerify { startCommandHandler.registerAndGreet(message) }
+        }
 }

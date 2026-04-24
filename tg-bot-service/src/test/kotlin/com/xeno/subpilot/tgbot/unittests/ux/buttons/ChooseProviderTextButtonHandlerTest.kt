@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+import kotlinx.coroutines.test.runTest
+
 @ExtendWith(MockKExtension::class)
 class ChooseProviderTextButtonHandlerTest {
 
@@ -49,16 +51,18 @@ class ChooseProviderTextButtonHandlerTest {
     }
 
     @Test
-    fun `handle pushes MAIN_MENU to navigation stack`() {
-        handler.handle(Message(chat = Chat(id = chatId)))
+    fun `handle pushes MAIN_MENU to navigation stack`() =
+        runTest {
+            handler.handle(Message(chat = Chat(id = chatId)))
 
-        verify { navigationService.push(chatId, BotScreen.MAIN_MENU) }
-    }
+            verify { navigationService.push(chatId, BotScreen.MAIN_MENU) }
+        }
 
     @Test
-    fun `handle renders PROVIDER_MENU screen`() {
-        handler.handle(Message(chat = Chat(id = chatId)))
+    fun `handle renders PROVIDER_MENU screen`() =
+        runTest {
+            handler.handle(Message(chat = Chat(id = chatId)))
 
-        verify { screenRenderer.render(chatId, BotScreen.PROVIDER_MENU) }
-    }
+            verify { screenRenderer.render(chatId, BotScreen.PROVIDER_MENU) }
+        }
 }

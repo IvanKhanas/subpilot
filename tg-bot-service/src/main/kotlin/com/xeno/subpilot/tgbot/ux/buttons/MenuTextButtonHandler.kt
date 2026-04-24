@@ -6,14 +6,14 @@ import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 
 @Component
-@Order(7)
+@Order(9)
 class MenuTextButtonHandler(
     private val menuCommandHandler: MenuCommandHandler,
 ) : TextButtonHandler {
 
     override fun supports(text: String) = text == BotButtons.BTN_MAIN_MENU
 
-    override fun handle(message: Message) {
+    override suspend fun handle(message: Message) {
         menuCommandHandler.handle(message)
     }
 }

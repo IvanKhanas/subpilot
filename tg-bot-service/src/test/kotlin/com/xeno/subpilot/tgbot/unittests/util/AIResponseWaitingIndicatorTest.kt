@@ -15,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 import kotlin.test.assertEquals
 
+import kotlinx.coroutines.test.runTest
+
 @ExtendWith(MockKExtension::class)
 class AIResponseWaitingIndicatorTest {
 
@@ -29,45 +31,49 @@ class AIResponseWaitingIndicatorTest {
     }
 
     @Test
-    fun `wrap returns block result when sendMessage returns null`() {
-        every { telegramClient.sendMessage(any(), any()) } returns null
+    fun `wrap returns block result when sendMessage returns null`() =
+        runTest {
+            every { telegramClient.sendMessage(any(), any()) } returns null
 
-        val result = indicator.wrap(chatId = 1L) { "ai response" }
+            val result = indicator.wrap(chatId = 1L) { "ai response" }
 
-        assertEquals("ai response", result)
-    }
-
-    @Test
-    fun `wrap sends waiting message with correct chat id`() {
-        every { telegramClient.sendMessage(any(), any()) } returns null
-
-        indicator.wrap(chatId = 77L) { "result" }
-
-        verify { telegramClient.sendMessage(77L, BotResponses.WAITING_RESPONSE.text) }
-    }
-
-    @Test
-    fun `wrap calls block and deletes waiting message on success`() {
-        every { telegramClient.sendMessage(any(), any()) } returns 99L
-        justRun { telegramClient.editMessage(any(), any(), any()) }
-        justRun { telegramClient.deleteMessage(any(), any()) }
-
-        val result = indicator.wrap(chatId = 42L) { "ai response" }
-
-        assertEquals("ai response", result)
-        verify { telegramClient.deleteMessage(42L, 99L) }
-    }
-
-    @Test
-    fun `wrap deletes waiting message even when block throws`() {
-        every { telegramClient.sendMessage(any(), any()) } returns 99L
-        justRun { telegramClient.editMessage(any(), any(), any()) }
-        justRun { telegramClient.deleteMessage(any(), any()) }
-
-        assertThrows<RuntimeException> {
-            indicator.wrap(chatId = 42L) { throw RuntimeException("boom") }
+            assertEquals("ai response", result)
         }
 
-        verify { telegramClient.deleteMessage(42L, 99L) }
-    }
+    @Test
+    fun `wrap sends waiting message with correct chat id`() =
+        runTest {
+            every { telegramClient.sendMessage(any(), any()) } returns null
+
+            indicator.wrap(chatId = 77L) { "result" }
+
+            verify { telegramClient.sendMessage(77L, BotResponses.WAITING_RESPONSE.text) }
+        }
+
+    @Test
+    fun `wrap calls block and deletes waiting message on success`() =
+        runTest {
+            every { telegramClient.sendMessage(any(), any()) } returns 99L
+            justRun { telegramClient.editMessage(any(), any(), any()) }
+            justRun { telegramClient.deleteMessage(any(), any()) }
+
+            val result = indicator.wrap(chatId = 42L) { "ai response" }
+
+            assertEquals("ai response", result)
+            verify { telegramClient.deleteMessage(42L, 99L) }
+        }
+
+    @Test
+    fun `wrap deletes waiting message even when block throws`() =
+        runTest {
+            every { telegramClient.sendMessage(any(), any()) } returns 99L
+            justRun { telegramClient.editMessage(any(), any(), any()) }
+            justRun { telegramClient.deleteMessage(any(), any()) }
+
+            assertThrows<RuntimeException> {
+                indicator.wrap(chatId = 42L) { throw RuntimeException("boom") }
+            }
+
+            verify { telegramClient.deleteMessage(42L, 99L) }
+        }
 }

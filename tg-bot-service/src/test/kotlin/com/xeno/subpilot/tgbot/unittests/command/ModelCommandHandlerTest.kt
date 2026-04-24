@@ -6,17 +6,22 @@ import com.xeno.subpilot.tgbot.client.TelegramClient
 import com.xeno.subpilot.tgbot.command.ModelCommandHandler
 import com.xeno.subpilot.tgbot.dto.Chat
 import com.xeno.subpilot.tgbot.dto.Message
+import com.xeno.subpilot.tgbot.dto.ModelPreferenceResult
 import com.xeno.subpilot.tgbot.dto.User
 import com.xeno.subpilot.tgbot.exception.SubscriptionServiceException
 import com.xeno.subpilot.tgbot.message.BotResponses
+import io.mockk.coEvery
+import io.mockk.coJustRun
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import io.mockk.justRun
 import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+
+import kotlinx.coroutines.runBlocking
 
 @ExtendWith(MockKExtension::class)
 class ModelCommandHandlerTest {
@@ -34,6 +39,10 @@ class ModelCommandHandlerTest {
 
     private val chatId = 100L
     private val userId = 42L
+    private val noChange =
+        ModelPreferenceResult(providerChanged = false, modelCost = 10, provider = "openai")
+    private val providerChanged =
+        ModelPreferenceResult(providerChanged = true, modelCost = 10, provider = "openai")
 
     @BeforeEach
     fun setUp() {
@@ -51,59 +60,59 @@ class ModelCommandHandlerTest {
 
     @Test
     fun `handle sends usage when no model arg provided`() {
-        handler.handle(message("/model"))
+        runBlocking { handler.handle(message("/model")) }
 
         verify { telegramClient.sendMessage(chatId, match { it.startsWith("Usage:") }) }
     }
 
     @Test
     fun `handle sends usage when too many args provided`() {
-        handler.handle(message("/model gpt-4o extra"))
+        runBlocking { handler.handle(message("/model gpt-4o extra")) }
 
         verify { telegramClient.sendMessage(chatId, match { it.startsWith("Usage:") }) }
     }
 
     @Test
     fun `handle sends not found when model id is unknown`() {
-        handler.handle(message("/model unknown-model"))
+        runBlocking { handler.handle(message("/model unknown-model")) }
 
         verify { telegramClient.sendMessage(chatId, match { it.contains("Unknown model") }) }
     }
 
     @Test
     fun `handle sends confirmation after setting model`() {
-        every { subscriptionClient.setModelPreference(userId, "gpt-4o") } returns false
+        coEvery { subscriptionClient.setModelPreference(userId, "gpt-4o") } returns noChange
 
-        handler.handle(message("/model gpt-4o"))
+        runBlocking { handler.handle(message("/model gpt-4o")) }
 
         verify { telegramClient.sendMessage(chatId, match { it.contains("GPT-4o") }) }
     }
 
     @Test
-    fun `handle clears history when provider changes`() {
-        every { subscriptionClient.setModelPreference(userId, "gpt-4o") } returns true
-        justRun { chatClient.clearHistory(chatId) }
+    fun `handle clears context when provider changes`() {
+        coEvery { subscriptionClient.setModelPreference(userId, "gpt-4o") } returns providerChanged
+        coJustRun { chatClient.clearContext(chatId) }
 
-        handler.handle(message("/model gpt-4o"))
+        runBlocking { handler.handle(message("/model gpt-4o")) }
 
-        verify { chatClient.clearHistory(chatId) }
+        coVerify { chatClient.clearContext(chatId) }
     }
 
     @Test
-    fun `handle does not clear history when provider is unchanged`() {
-        every { subscriptionClient.setModelPreference(userId, "gpt-4o") } returns false
+    fun `handle does not clear context when provider is unchanged`() {
+        coEvery { subscriptionClient.setModelPreference(userId, "gpt-4o") } returns noChange
 
-        handler.handle(message("/model gpt-4o"))
+        runBlocking { handler.handle(message("/model gpt-4o")) }
 
-        verify(exactly = 0) { chatClient.clearHistory(any()) }
+        coVerify(exactly = 0) { chatClient.clearContext(any()) }
     }
 
     @Test
     fun `handle sends failure message when subscription service throws`() {
-        every { subscriptionClient.setModelPreference(any(), any()) } throws
+        coEvery { subscriptionClient.setModelPreference(any(), any()) } throws
             SubscriptionServiceException("failed")
 
-        handler.handle(message("/model gpt-4o"))
+        runBlocking { handler.handle(message("/model gpt-4o")) }
 
         verify { telegramClient.sendMessage(chatId, BotResponses.MODEL_SET_FAILED_RESPONSE.text) }
     }

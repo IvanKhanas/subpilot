@@ -6,14 +6,14 @@ import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 
 @Component
-@Order(1)
+@Order(6)
 class HelpTextButtonHandler(
     private val helpCommandHandler: HelpCommandHandler,
 ) : TextButtonHandler {
 
     override fun supports(text: String) = text == BotButtons.BTN_HELP
 
-    override fun handle(message: Message) {
+    override suspend fun handle(message: Message) {
         helpCommandHandler.handle(message)
     }
 }

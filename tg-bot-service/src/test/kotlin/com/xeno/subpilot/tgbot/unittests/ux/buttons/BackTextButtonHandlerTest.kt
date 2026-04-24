@@ -19,6 +19,8 @@ import org.junit.jupiter.api.extension.ExtendWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+import kotlinx.coroutines.test.runTest
+
 @ExtendWith(MockKExtension::class)
 class BackTextButtonHandlerTest {
 
@@ -49,20 +51,22 @@ class BackTextButtonHandlerTest {
     }
 
     @Test
-    fun `handle renders the screen popped from navigation stack`() {
-        every { navigationService.pop(chatId) } returns BotScreen.PROVIDER_MENU
+    fun `handle renders the screen popped from navigation stack`() =
+        runTest {
+            every { navigationService.pop(chatId) } returns BotScreen.PROVIDER_MENU
 
-        handler.handle(Message(chat = Chat(id = chatId)))
+            handler.handle(Message(chat = Chat(id = chatId)))
 
-        verify { screenRenderer.render(chatId, BotScreen.PROVIDER_MENU) }
-    }
+            verify { screenRenderer.render(chatId, BotScreen.PROVIDER_MENU) }
+        }
 
     @Test
-    fun `handle renders MAIN_MENU when navigation stack is empty`() {
-        every { navigationService.pop(chatId) } returns null
+    fun `handle renders MAIN_MENU when navigation stack is empty`() =
+        runTest {
+            every { navigationService.pop(chatId) } returns null
 
-        handler.handle(Message(chat = Chat(id = chatId)))
+            handler.handle(Message(chat = Chat(id = chatId)))
 
-        verify { screenRenderer.render(chatId, BotScreen.MAIN_MENU) }
-    }
+            verify { screenRenderer.render(chatId, BotScreen.MAIN_MENU) }
+        }
 }

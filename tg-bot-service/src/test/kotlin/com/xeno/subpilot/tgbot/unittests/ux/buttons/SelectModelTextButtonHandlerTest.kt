@@ -5,13 +5,16 @@ import com.xeno.subpilot.tgbot.client.SubscriptionClient
 import com.xeno.subpilot.tgbot.client.TelegramClient
 import com.xeno.subpilot.tgbot.dto.Chat
 import com.xeno.subpilot.tgbot.dto.Message
+import com.xeno.subpilot.tgbot.dto.ModelPreferenceResult
 import com.xeno.subpilot.tgbot.dto.User
 import com.xeno.subpilot.tgbot.ux.AiProvider
 import com.xeno.subpilot.tgbot.ux.buttons.SelectModelTextButtonHandler
+import io.mockk.coEvery
+import io.mockk.coJustRun
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import io.mockk.justRun
 import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -19,6 +22,8 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+
+import kotlinx.coroutines.runBlocking
 
 @ExtendWith(MockKExtension::class)
 class SelectModelTextButtonHandlerTest {
@@ -37,6 +42,10 @@ class SelectModelTextButtonHandlerTest {
     private val userId = 1L
     private val chatId = 42L
     private val model = AiProvider.OPENAI.models.first()
+    private val resultNoChange =
+        ModelPreferenceResult(providerChanged = false, modelCost = 10, provider = "openai")
+    private val resultProviderChanged =
+        ModelPreferenceResult(providerChanged = true, modelCost = 10, provider = "openai")
 
     @BeforeEach
     fun setUp() {
@@ -56,62 +65,91 @@ class SelectModelTextButtonHandlerTest {
 
     @Test
     fun `handle sets model preference via subscriptionClient`() {
-        every { subscriptionClient.setModelPreference(userId, model.id) } returns false
+        coEvery { subscriptionClient.setModelPreference(userId, model.id) } returns resultNoChange
 
-        handler.handle(
-            Message(chat = Chat(id = chatId), from = User(id = userId), text = model.displayName),
-        )
+        runBlocking {
+            handler.handle(
+                Message(
+                    chat = Chat(id = chatId),
+                    from = User(id = userId),
+                    text = model.displayName,
+                ),
+            )
+        }
 
-        verify { subscriptionClient.setModelPreference(userId, model.id) }
+        coVerify { subscriptionClient.setModelPreference(userId, model.id) }
     }
 
     @Test
-    fun `handle clears history when provider changed`() {
-        every { subscriptionClient.setModelPreference(userId, model.id) } returns true
-        justRun { chatClient.clearHistory(chatId) }
+    fun `handle clears context when provider changed`() {
+        coEvery { subscriptionClient.setModelPreference(userId, model.id) } returns
+            resultProviderChanged
+        coJustRun { chatClient.clearContext(chatId) }
 
-        handler.handle(
-            Message(chat = Chat(id = chatId), from = User(id = userId), text = model.displayName),
-        )
+        runBlocking {
+            handler.handle(
+                Message(
+                    chat = Chat(id = chatId),
+                    from = User(id = userId),
+                    text = model.displayName,
+                ),
+            )
+        }
 
-        verify { chatClient.clearHistory(chatId) }
+        coVerify { chatClient.clearContext(chatId) }
     }
 
     @Test
-    fun `handle does not clear history when provider did not change`() {
-        every { subscriptionClient.setModelPreference(userId, model.id) } returns false
+    fun `handle does not clear context when provider did not change`() {
+        coEvery { subscriptionClient.setModelPreference(userId, model.id) } returns resultNoChange
 
-        handler.handle(
-            Message(chat = Chat(id = chatId), from = User(id = userId), text = model.displayName),
-        )
+        runBlocking {
+            handler.handle(
+                Message(
+                    chat = Chat(id = chatId),
+                    from = User(id = userId),
+                    text = model.displayName,
+                ),
+            )
+        }
 
-        verify(exactly = 0) { chatClient.clearHistory(any()) }
+        coVerify(exactly = 0) { chatClient.clearContext(any()) }
     }
 
     @Test
     fun `handle sends confirmation message to chat`() {
-        every { subscriptionClient.setModelPreference(userId, model.id) } returns false
+        coEvery { subscriptionClient.setModelPreference(userId, model.id) } returns resultNoChange
 
-        handler.handle(
-            Message(chat = Chat(id = chatId), from = User(id = userId), text = model.displayName),
-        )
+        runBlocking {
+            handler.handle(
+                Message(
+                    chat = Chat(id = chatId),
+                    from = User(id = userId),
+                    text = model.displayName,
+                ),
+            )
+        }
 
         verify { telegramClient.sendMessage(chatId, any(), any(), any()) }
     }
 
     @Test
     fun `handle does nothing when message text is null`() {
-        handler.handle(Message(chat = Chat(id = chatId), from = User(id = userId), text = null))
+        runBlocking {
+            handler.handle(Message(chat = Chat(id = chatId), from = User(id = userId), text = null))
+        }
 
-        verify(exactly = 0) { subscriptionClient.setModelPreference(any(), any()) }
+        coVerify(exactly = 0) { subscriptionClient.setModelPreference(any(), any()) }
         verify(exactly = 0) { telegramClient.sendMessage(any(), any(), any(), any()) }
     }
 
     @Test
     fun `handle does nothing when from is null`() {
-        handler.handle(Message(chat = Chat(id = chatId), from = null, text = model.displayName))
+        runBlocking {
+            handler.handle(Message(chat = Chat(id = chatId), from = null, text = model.displayName))
+        }
 
-        verify(exactly = 0) { subscriptionClient.setModelPreference(any(), any()) }
+        coVerify(exactly = 0) { subscriptionClient.setModelPreference(any(), any()) }
         verify(exactly = 0) { telegramClient.sendMessage(any(), any(), any(), any()) }
     }
 }

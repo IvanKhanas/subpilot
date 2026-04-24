@@ -27,6 +27,7 @@ dependencies {
     implementation(libs.kotlin.logging)
 
     implementation(project(":proto"))
+    implementation(libs.spring.kafka)
     implementation(libs.commonmark)
     implementation(libs.jsoup)
 
@@ -35,6 +36,7 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.wiremock)
     testImplementation(libs.datafaker)
+    testImplementation(libs.springmockk)
     testImplementation(libs.testcontainers)
     testImplementation(libs.testcontainers.junit5)
     testRuntimeOnly(libs.junit.platform.launcher)

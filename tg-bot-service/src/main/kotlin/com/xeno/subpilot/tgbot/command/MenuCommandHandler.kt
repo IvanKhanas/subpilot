@@ -15,7 +15,7 @@ class MenuCommandHandler(
     override val command = "/menu"
     override val description = "Show main menu"
 
-    override fun handle(message: Message) {
+    override suspend fun handle(message: Message) {
         navigationService.clear(message.chat.id)
         screenRenderer.render(message.chat.id, BotScreen.MAIN_MENU)
     }

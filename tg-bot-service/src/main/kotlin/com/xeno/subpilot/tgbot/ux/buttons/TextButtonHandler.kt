@@ -5,5 +5,5 @@ import com.xeno.subpilot.tgbot.dto.Message
 interface TextButtonHandler {
     fun supports(text: String): Boolean
 
-    fun handle(message: Message)
+    suspend fun handle(message: Message)
 }

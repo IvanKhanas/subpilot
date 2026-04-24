@@ -1,24 +1,35 @@
 package com.xeno.subpilot.tgbot.ux.buttons
 
+import com.xeno.subpilot.tgbot.dto.InlineKeyboardButton
+import com.xeno.subpilot.tgbot.dto.InlineKeyboardMarkup
 import com.xeno.subpilot.tgbot.dto.KeyboardButton
+import com.xeno.subpilot.tgbot.dto.PlanInfo
 import com.xeno.subpilot.tgbot.dto.ReplyKeyboardMarkup
 import com.xeno.subpilot.tgbot.ux.AiProvider
+import com.xeno.subpilot.tgbot.ux.PremiumProvider
 
 object BotButtons {
 
-    const val BTN_START_CHAT = "\uD83D\uDE80Start chat"
-    const val BTN_CHOOSE_MODEL = "\uD83E\uDD16Choose model"
-    const val BTN_HELP = "ℹ\uFE0FHelp"
-    const val BTN_BACK = "⏪Back"
-    const val BTN_MAIN_MENU = "\uD83C\uDFE0Main menu"
-    const val SUPPORT = "\uD83D\uDCACSupport"
+    const val BTN_START_CHAT = "🚀 Start chat"
+    const val BTN_CHOOSE_MODEL = "🤖 Choose model"
+    const val CLEAR_CONTEXT = "🧹 Clear context"
+    const val PREMIUM = "🤩 Premium"
+    const val BALANCE = "👛 Balance"
+    const val BONUS = "🎁 Bonus"
+    const val BTN_HELP = "ℹ️ Help"
+    const val SUPPORT = "💬 Support"
+
+    const val BTN_BACK = "⏪ Back"
+    const val BTN_MAIN_MENU = "🏠 Main menu"
 
     val mainMenu =
         ReplyKeyboardMarkup(
             keyboard =
                 listOf(
                     listOf(KeyboardButton(BTN_START_CHAT)),
-                    listOf(KeyboardButton(BTN_CHOOSE_MODEL), KeyboardButton(BTN_HELP)),
+                    listOf(KeyboardButton(BTN_CHOOSE_MODEL), KeyboardButton(CLEAR_CONTEXT)),
+                    listOf(KeyboardButton(PREMIUM), KeyboardButton(BALANCE)),
+                    listOf(KeyboardButton(BONUS), KeyboardButton(BTN_HELP)),
                     listOf(KeyboardButton(SUPPORT)),
                 ),
         )
@@ -32,6 +43,15 @@ object BotButtons {
                 ),
         )
 
+    val premiumProviderMenu =
+        ReplyKeyboardMarkup(
+            keyboard =
+                listOf(
+                    PremiumProvider.entries.map { KeyboardButton(it.displayName) },
+                    listOf(KeyboardButton(BTN_BACK), KeyboardButton(BTN_MAIN_MENU)),
+                ),
+        )
+
     fun modelMenu(provider: AiProvider) =
         ReplyKeyboardMarkup(
             keyboard =
@@ -40,4 +60,33 @@ object BotButtons {
                     listOf(KeyboardButton(BTN_BACK), KeyboardButton(BTN_MAIN_MENU)),
                 ),
         )
+
+    fun planPurchaseKeyboard(plans: List<PlanInfo>) =
+        InlineKeyboardMarkup(
+            inlineKeyboard =
+                plans.map { plan ->
+                    listOf(
+                        InlineKeyboardButton(
+                            text = "Purchase ${plan.displayName}",
+                            callbackData = "purchase:${plan.planId}",
+                        ),
+                    )
+                },
+        )
+
+    fun bonusConfirmKeyboard(
+        planId: String,
+        idempotencyKey: java.util.UUID,
+    ) = InlineKeyboardMarkup(
+        inlineKeyboard =
+            listOf(
+                listOf(
+                    InlineKeyboardButton(
+                        text = "Yes",
+                        callbackData = "bonus_yes:$planId:$idempotencyKey",
+                    ),
+                    InlineKeyboardButton(text = "No", callbackData = "bonus_no:$planId"),
+                ),
+            ),
+    )
 }

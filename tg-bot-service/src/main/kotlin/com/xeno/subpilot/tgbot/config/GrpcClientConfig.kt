@@ -1,6 +1,8 @@
 package com.xeno.subpilot.tgbot.config
 
 import com.xeno.subpilot.proto.chat.v1.ChatServiceGrpcKt
+import com.xeno.subpilot.proto.loyalty.v1.LoyaltyServiceGrpcKt
+import com.xeno.subpilot.proto.payment.v1.PaymentServiceGrpcKt
 import com.xeno.subpilot.proto.subscription.v1.SubscriptionServiceGrpcKt
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -20,4 +22,16 @@ class GrpcClientConfig {
         SubscriptionServiceGrpcKt.SubscriptionServiceCoroutineStub(
             channels.createChannel("subscription-service"),
         )
+
+    @Bean
+    fun paymentServiceStub(
+        channels: GrpcChannelFactory,
+    ): PaymentServiceGrpcKt.PaymentServiceCoroutineStub =
+        PaymentServiceGrpcKt.PaymentServiceCoroutineStub(channels.createChannel("payment-service"))
+
+    @Bean
+    fun loyaltyServiceStub(
+        channels: GrpcChannelFactory,
+    ): LoyaltyServiceGrpcKt.LoyaltyServiceCoroutineStub =
+        LoyaltyServiceGrpcKt.LoyaltyServiceCoroutineStub(channels.createChannel("loyalty-service"))
 }

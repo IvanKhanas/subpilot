@@ -16,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 import kotlin.test.assertEquals
 
+import kotlinx.coroutines.test.runTest
+
 @ExtendWith(MockKExtension::class)
 class MenuCommandHandlerTest {
 
@@ -37,18 +39,20 @@ class MenuCommandHandlerTest {
     }
 
     @Test
-    fun `handle clears navigation stack for the message chat`() {
-        handler.handle(Message(chat = Chat(id = chatId)))
+    fun `handle clears navigation stack for the message chat`() =
+        runTest {
+            handler.handle(Message(chat = Chat(id = chatId)))
 
-        verify { navigationService.clear(chatId) }
-    }
+            verify { navigationService.clear(chatId) }
+        }
 
     @Test
-    fun `handle renders MAIN_MENU for the message chat`() {
-        handler.handle(Message(chat = Chat(id = chatId)))
+    fun `handle renders MAIN_MENU for the message chat`() =
+        runTest {
+            handler.handle(Message(chat = Chat(id = chatId)))
 
-        verify { screenRenderer.render(chatId, BotScreen.MAIN_MENU) }
-    }
+            verify { screenRenderer.render(chatId, BotScreen.MAIN_MENU) }
+        }
 
     @Test
     fun `exposes correct command and description`() {

@@ -29,6 +29,11 @@ class NavigationService(
         )
     }
 
+    fun peek(chatId: Long): BotScreen? {
+        val name = redis.opsForList().index(redisKey(chatId), -1) ?: return null
+        return BotScreen.entries.find { it.name == name }
+    }
+
     fun pop(chatId: Long): BotScreen? {
         val name = redis.opsForList().rightPop(redisKey(chatId)) ?: return null
         return BotScreen.entries.find { it.name == name }

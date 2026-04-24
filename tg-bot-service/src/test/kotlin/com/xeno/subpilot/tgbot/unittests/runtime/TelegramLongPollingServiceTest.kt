@@ -9,6 +9,9 @@ import com.xeno.subpilot.tgbot.dto.Update
 import com.xeno.subpilot.tgbot.properties.TelegramBotProperties
 import com.xeno.subpilot.tgbot.runtime.TelegramLongPollingService
 import com.xeno.subpilot.tgbot.runtime.TelegramMessageHandler
+import io.mockk.coEvery
+import io.mockk.coJustRun
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
@@ -52,7 +55,7 @@ class TelegramLongPollingServiceTest {
         every { helpCommand.command } returns "/help"
         every { helpCommand.description } returns "Show available commands"
         justRun { telegramClient.setMyCommands(any()) }
-        justRun { messageHandler.onUpdate(any()) }
+        coJustRun { messageHandler.onUpdate(any()) }
 
         service =
             TelegramLongPollingService(
@@ -93,7 +96,7 @@ class TelegramLongPollingServiceTest {
 
         service.start()
 
-        verify(timeout = 1500) { messageHandler.onUpdate(update) }
+        coVerify(timeout = 1500) { messageHandler.onUpdate(update) }
         verify(timeout = 1500) { telegramClient.getUpdates(6, 15) }
     }
 
@@ -104,10 +107,10 @@ class TelegramLongPollingServiceTest {
         every { telegramClient.getUpdates(null, 15) } returns listOf(badUpdate)
         every { telegramClient.getUpdates(2, 15) } returns listOf(goodUpdate)
         every { telegramClient.getUpdates(3, 15) } throws InterruptedException()
-        every { messageHandler.onUpdate(badUpdate) } throws RuntimeException("crash!")
+        coEvery { messageHandler.onUpdate(badUpdate) } throws RuntimeException("crash!")
 
         service.start()
 
-        verify(timeout = 2000) { messageHandler.onUpdate(goodUpdate) }
+        coVerify(timeout = 2000) { messageHandler.onUpdate(goodUpdate) }
     }
 }

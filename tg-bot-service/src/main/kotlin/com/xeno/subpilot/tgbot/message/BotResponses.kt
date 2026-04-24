@@ -22,6 +22,8 @@ enum class BotResponses(
         Available commands:
         /start — start the bot
         /help — show this message
+        /balance — show your request balance
+        /bonus — show your bonus points
         /support - write to a support specialist
 
         Just send a message to start an AI chat.
@@ -48,7 +50,7 @@ enum class BotResponses(
 
     CHOOSE_MODEL_RESPONSE("Choose a %s model:"),
 
-    MODEL_SET_RESPONSE("Model set to %s."),
+    MODEL_SET_RESPONSE("Model set to %s.\n%s costs %d requests to %s provider per message."),
 
     WAITING_RESPONSE("Please wait while AI processes your request."),
 
@@ -82,6 +84,60 @@ enum class BotResponses(
 
     MODEL_NOT_FOUND_RESPONSE(
         "Unknown model: %s\n\nAvailable models:\n%s",
+    ),
+
+    CHOOSE_PREMIUM_PROVIDER_RESPONSE("Choose subscription provider:"),
+
+    PLAN_LIST_RESPONSE("%s plans:\n\n%s"),
+
+    PAYMENT_LINK_RESPONSE("Pay here to activate your subscription:\n%s"),
+
+    PAYMENT_FAILED_RESPONSE("Failed to create payment. Please try again later."),
+
+    BALANCE_RESPONSE(
+        """
+        Free quota requests:
+        %s
+
+        Paid quota requests:
+        %s
+        """.trimIndent(),
+    ),
+
+    BALANCE_FREE_ENTRY_RESPONSE("• %s: %d"),
+
+    BALANCE_FREE_RESET_ENTRY_RESPONSE("• %s: 0 (resets at %s)"),
+
+    BALANCE_PAID_ENTRY_RESPONSE("• %s: %d"),
+
+    BALANCE_PAID_EMPTY_ENTRY_RESPONSE("• %s: 0"),
+
+    BALANCE_TOP_UP_RESPONSE("Top up your balance: /premium"),
+
+    CONTEXT_CLEARED_RESPONSE("Context cleared. Starting a fresh conversation."),
+
+    SUBSCRIPTION_ACTIVATED_RESPONSE(
+        """
+        Subscription activated!
+        Plan: %s
+        %s
+        """.trimIndent(),
+    ),
+
+    BONUS_BALANCE_RESPONSE("You have %d bonus points."),
+
+    BONUS_PROMPT_RESPONSE(
+        "You have %d bonus points. Use them to get this subscription for free?",
+    ),
+
+    BONUS_PARTIAL_PROMPT_RESPONSE(
+        "You have %d bonus points. Apply a %d₽ discount and pay %d₽?",
+    ),
+
+    BONUS_SPEND_SUCCESS_RESPONSE("Subscription activated with bonus points!"),
+
+    BONUS_SPEND_FAILED_RESPONSE(
+        "Failed to apply bonus points. Please try again later.",
     ),
     ;
 

@@ -17,6 +17,8 @@ import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
 
+import java.net.http.HttpTimeoutException
+
 private val logger = KotlinLogging.logger {}
 
 @Component
@@ -47,6 +49,7 @@ class RestTelegramClient(
 
             if (response?.ok == true) response.result.orEmpty() else emptyList()
         } catch (ex: RestClientException) {
+            if (ex.cause is HttpTimeoutException) return emptyList()
             logger.atError {
                 message = "telegram_get_updates_failed"
                 cause = ex

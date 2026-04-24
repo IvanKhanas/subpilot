@@ -14,7 +14,7 @@ class SupportCommandHandler(
     override val command = "/support"
     override val description = "Contact support"
 
-    override fun handle(message: Message) {
+    override suspend fun handle(message: Message) {
         val text = BotResponses.SUPPORT_RESPONSE.text.format(supportProperties.operatorTag)
 
         telegramClient.sendMessage(message.chat.id, text)

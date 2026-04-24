@@ -5,16 +5,18 @@ import com.xeno.subpilot.tgbot.dto.Chat
 import com.xeno.subpilot.tgbot.dto.Message
 import com.xeno.subpilot.tgbot.ux.buttons.BotButtons
 import com.xeno.subpilot.tgbot.ux.buttons.MenuTextButtonHandler
+import io.mockk.coJustRun
+import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import io.mockk.justRun
-import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+
+import kotlinx.coroutines.test.runTest
 
 @ExtendWith(MockKExtension::class)
 class MenuTextButtonHandlerTest {
@@ -26,7 +28,7 @@ class MenuTextButtonHandlerTest {
 
     @BeforeEach
     fun setUp() {
-        justRun { menuCommandHandler.handle(any()) }
+        coJustRun { menuCommandHandler.handle(any()) }
         handler = MenuTextButtonHandler(menuCommandHandler)
     }
 
@@ -41,11 +43,12 @@ class MenuTextButtonHandlerTest {
     }
 
     @Test
-    fun `handle delegates to menuCommandHandler`() {
-        val message = Message(chat = Chat(id = 1L))
+    fun `handle delegates to menuCommandHandler`() =
+        runTest {
+            val message = Message(chat = Chat(id = 1L))
 
-        handler.handle(message)
+            handler.handle(message)
 
-        verify { menuCommandHandler.handle(message) }
-    }
+            coVerify { menuCommandHandler.handle(message) }
+        }
 }

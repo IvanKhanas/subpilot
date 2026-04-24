@@ -5,5 +5,5 @@ import com.xeno.subpilot.tgbot.dto.CallbackQuery
 interface CallbackHandler {
     fun supports(data: String): Boolean
 
-    fun handle(callbackQuery: CallbackQuery)
+    suspend fun handle(callbackQuery: CallbackQuery)
 }

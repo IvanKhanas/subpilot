@@ -10,6 +10,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension
+import com.ninjasquad.springmockk.MockkBean
 import com.xeno.subpilot.proto.chat.v1.ProcessMessageResponse
 import com.xeno.subpilot.tgbot.client.ChatClient
 import com.xeno.subpilot.tgbot.dto.CallbackQuery
@@ -21,31 +22,30 @@ import com.xeno.subpilot.tgbot.runtime.TelegramLongPollingService
 import com.xeno.subpilot.tgbot.runtime.TelegramMessageHandler
 import com.xeno.subpilot.tgbot.ux.NavigationService
 import com.xeno.subpilot.tgbot.ux.buttons.BotButtons
+import io.mockk.coEvery
 import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
-import org.mockito.ArgumentMatchers.anyLong
-import org.mockito.ArgumentMatchers.anyString
-import org.mockito.BDDMockito.given
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
-import org.springframework.test.context.bean.override.mockito.MockitoBean
 
 import kotlin.random.Random
+
+import kotlinx.coroutines.runBlocking
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class TelegramBotIntegrationTest {
 
-    @MockitoBean
+    @MockkBean(relaxed = true)
     private lateinit var longPollingService: TelegramLongPollingService
 
-    @MockitoBean
+    @MockkBean
     private lateinit var chatClient: ChatClient
 
-    @MockitoBean
+    @MockkBean(relaxed = true)
     private lateinit var navigationService: NavigationService
 
     companion object {
@@ -62,6 +62,7 @@ class TelegramBotIntegrationTest {
         @DynamicPropertySource
         fun configure(registry: DynamicPropertyRegistry) {
             registry.add("telegram.bot.base-url") { "http://localhost:${wireMock.port}" }
+            registry.add("telegram.bot.token") { BOT_TOKEN }
         }
 
         private val faker = Faker()
@@ -83,16 +84,19 @@ class TelegramBotIntegrationTest {
                 anyUrl(),
             ).willReturn(okJson("""{"ok":true,"result":{"message_id":1,"chat":{"id":1}}}""")),
         )
-        given(
-            chatClient.processMessage(anyLong(), anyLong(), anyString()),
-        ).willReturn(ProcessMessageResponse.newBuilder().setText("AI response").build())
+        coEvery { chatClient.processMessage(any(), any(), any()) } returns
+            ProcessMessageResponse.newBuilder().setText("AI response").build()
     }
 
     @Test
     fun `start command with firstName sends personalized greeting`() {
         val firstName = faker.name().firstName()
 
-        messageHandler.onUpdate(messageUpdate(randomId(), "/start", firstName = firstName))
+        runBlocking {
+            messageHandler.onUpdate(
+                messageUpdate(randomId(), "/start", firstName = firstName),
+            )
+        }
 
         wireMock.verify(
             1,
@@ -103,7 +107,11 @@ class TelegramBotIntegrationTest {
 
     @Test
     fun `start command without firstName falls back to friend`() {
-        messageHandler.onUpdate(messageUpdate(randomId(), "/start", firstName = null))
+        runBlocking {
+            messageHandler.onUpdate(
+                messageUpdate(randomId(), "/start", firstName = null),
+            )
+        }
 
         wireMock.verify(
             1,
@@ -116,7 +124,7 @@ class TelegramBotIntegrationTest {
     fun `start command routes reply to correct chat`() {
         val chatId = randomId()
 
-        messageHandler.onUpdate(messageUpdate(chatId, "/start"))
+        runBlocking { messageHandler.onUpdate(messageUpdate(chatId, "/start")) }
 
         wireMock.verify(
             2,
@@ -127,7 +135,7 @@ class TelegramBotIntegrationTest {
 
     @Test
     fun `start command attaches main menu reply keyboard`() {
-        messageHandler.onUpdate(messageUpdate(randomId(), "/start"))
+        runBlocking { messageHandler.onUpdate(messageUpdate(randomId(), "/start")) }
 
         wireMock.verify(
             1,
@@ -143,7 +151,7 @@ class TelegramBotIntegrationTest {
 
     @Test
     fun `help command sends help text`() {
-        messageHandler.onUpdate(messageUpdate(randomId(), "/help"))
+        runBlocking { messageHandler.onUpdate(messageUpdate(randomId(), "/help")) }
 
         wireMock.verify(
             1,
@@ -154,7 +162,11 @@ class TelegramBotIntegrationTest {
 
     @Test
     fun `start chat text button sends greeting message`() {
-        messageHandler.onUpdate(messageUpdate(randomId(), BotButtons.BTN_START_CHAT))
+        runBlocking {
+            messageHandler.onUpdate(
+                messageUpdate(randomId(), BotButtons.BTN_START_CHAT),
+            )
+        }
 
         wireMock.verify(
             1,
@@ -164,7 +176,7 @@ class TelegramBotIntegrationTest {
 
     @Test
     fun `help text button sends help text`() {
-        messageHandler.onUpdate(messageUpdate(randomId(), BotButtons.BTN_HELP))
+        runBlocking { messageHandler.onUpdate(messageUpdate(randomId(), BotButtons.BTN_HELP)) }
 
         wireMock.verify(
             1,
@@ -177,7 +189,11 @@ class TelegramBotIntegrationTest {
     fun `start_chat callback acknowledges without sending a message`() {
         val callbackId = faker.internet().uuid()
 
-        messageHandler.onUpdate(callbackUpdate(randomId(), callbackId, "start_chat"))
+        runBlocking {
+            messageHandler.onUpdate(
+                callbackUpdate(randomId(), callbackId, "start_chat"),
+            )
+        }
 
         wireMock.verify(0, postRequestedFor(urlPathEqualTo(sendMessagePath())))
         wireMock.verify(
@@ -191,7 +207,7 @@ class TelegramBotIntegrationTest {
     fun `help callback acknowledges without sending a message`() {
         val callbackId = faker.internet().uuid()
 
-        messageHandler.onUpdate(callbackUpdate(randomId(), callbackId, "help"))
+        runBlocking { messageHandler.onUpdate(callbackUpdate(randomId(), callbackId, "help")) }
 
         wireMock.verify(0, postRequestedFor(urlPathEqualTo(sendMessagePath())))
         wireMock.verify(
@@ -203,7 +219,7 @@ class TelegramBotIntegrationTest {
 
     @Test
     fun `unknown text message is forwarded to chat service`() {
-        messageHandler.onUpdate(messageUpdate(randomId(), faker.lorem().sentence()))
+        runBlocking { messageHandler.onUpdate(messageUpdate(randomId(), faker.lorem().sentence())) }
 
         wireMock.verify(
             1,
@@ -214,7 +230,7 @@ class TelegramBotIntegrationTest {
 
     @Test
     fun `unknown command sends unknown command response`() {
-        messageHandler.onUpdate(messageUpdate(randomId(), "/unknowncommand"))
+        runBlocking { messageHandler.onUpdate(messageUpdate(randomId(), "/unknowncommand")) }
 
         wireMock.verify(
             1,
@@ -227,7 +243,11 @@ class TelegramBotIntegrationTest {
     fun `unknown callback acknowledges without sending a message`() {
         val callbackId = faker.internet().uuid()
 
-        messageHandler.onUpdate(callbackUpdate(randomId(), callbackId, "unknown_data"))
+        runBlocking {
+            messageHandler.onUpdate(
+                callbackUpdate(randomId(), callbackId, "unknown_data"),
+            )
+        }
 
         wireMock.verify(0, postRequestedFor(urlPathEqualTo(sendMessagePath())))
         wireMock.verify(1, postRequestedFor(urlPathEqualTo(answerCallbackPath())))

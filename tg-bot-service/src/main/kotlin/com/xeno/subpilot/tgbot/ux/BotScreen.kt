@@ -10,4 +10,8 @@ enum class BotScreen(
 ) {
     MAIN_MENU(BotResponses.MAIN_MENU_RESPONSE.text, BotButtons.mainMenu),
     PROVIDER_MENU(BotResponses.CHOOSE_PROVIDER_RESPONSE.text, BotButtons.providerMenu),
+    PREMIUM_MENU(
+        BotResponses.CHOOSE_PREMIUM_PROVIDER_RESPONSE.text,
+        BotButtons.premiumProviderMenu,
+    ),
 }
