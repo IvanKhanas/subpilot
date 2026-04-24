@@ -41,7 +41,6 @@ class ModelPreferenceServiceTest {
                     "claude-3-5-sonnet" to "anthropic",
                 ),
             modelCosts = mapOf("gpt-4o" to 3, "gpt-4o-mini" to 1, "claude-3-5-sonnet" to 2),
-            plans = emptyMap(),
         )
 
     private val userId = 7L

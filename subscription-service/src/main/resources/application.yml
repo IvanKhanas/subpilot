@@ -34,23 +34,6 @@ subscription:
     gpt-4o-mini: 1
     gpt-4o: 2
     gpt-4-turbo: 3
-  plans:
-    openai-basic:
-      provider: openai
-      display-name: "Basic - 100 requests for OpenAI"
-      price: 199.00
-      currency: RUB
-      allocations:
-        - provider: openai
-          requests: 100
-    openai-pro:
-      provider: openai
-      display-name: "Pro - 300 requests for OpenAI"
-      price: 499.00
-      currency: RUB
-      allocations:
-        - provider: openai
-          requests: 300
 
 server:
   port: ${SUBSCRIPTION_SERVER_PORT:8083}

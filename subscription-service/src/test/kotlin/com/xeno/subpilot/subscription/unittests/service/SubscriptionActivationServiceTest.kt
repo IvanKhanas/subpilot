@@ -3,7 +3,7 @@ package com.xeno.subpilot.subscription.unittests.service
 import com.xeno.subpilot.subscription.dto.kafka.PaymentSucceededEvent
 import com.xeno.subpilot.subscription.properties.PlanProperties
 import com.xeno.subpilot.subscription.properties.ProviderAllocation
-import com.xeno.subpilot.subscription.properties.SubscriptionProperties
+import com.xeno.subpilot.subscription.repository.PlanRepository
 import com.xeno.subpilot.subscription.repository.UserSubscriptionActivationRepository
 import com.xeno.subpilot.subscription.service.SubscriptionActivationService
 import io.mockk.every
@@ -17,7 +17,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 import java.math.BigDecimal
 import java.time.Clock
-import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
@@ -27,6 +26,9 @@ import kotlin.test.assertTrue
 
 @ExtendWith(MockKExtension::class)
 class SubscriptionActivationServiceTest {
+
+    @MockK
+    lateinit var planRepository: PlanRepository
 
     @MockK
     lateinit var activationRepository: UserSubscriptionActivationRepository
@@ -40,32 +42,23 @@ class SubscriptionActivationServiceTest {
     private val openAiAllocation = ProviderAllocation(provider = "openai", requests = 100)
     private val anthropicAllocation = ProviderAllocation(provider = "anthropic", requests = 50)
 
-    private val properties =
-        SubscriptionProperties(
-            freeQuota = 10,
-            freeQuotaResetPeriod = Duration.ofDays(7),
-            defaultModel = "gpt-4o-mini",
-            modelProviders = mapOf("gpt-4o-mini" to "openai"),
-            modelCosts = mapOf("gpt-4o-mini" to 1),
-            plans =
-                mapOf(
-                    "combo-basic" to
-                        PlanProperties(
-                            provider = "openai",
-                            displayName = "Combo Basic",
-                            price = BigDecimal("299.00"),
-                            currency = "RUB",
-                            allocations = listOf(openAiAllocation, anthropicAllocation),
-                        ),
-                ),
+    private val comboPlan =
+        PlanProperties(
+            provider = "openai",
+            displayName = "Combo Basic",
+            price = BigDecimal("299.00"),
+            currency = "RUB",
+            allocations = listOf(openAiAllocation, anthropicAllocation),
         )
 
     private lateinit var service: SubscriptionActivationService
 
     @BeforeEach
     fun setUp() {
-        service = SubscriptionActivationService(properties, activationRepository, fixedClock)
+        service = SubscriptionActivationService(planRepository, activationRepository, fixedClock)
         justRun { activationRepository.batchUpsertRequestBalance(any(), any()) }
+        every { planRepository.findById("combo-basic") } returns comboPlan
+        every { planRepository.findById("unknown-plan") } returns null
     }
 
     @Test

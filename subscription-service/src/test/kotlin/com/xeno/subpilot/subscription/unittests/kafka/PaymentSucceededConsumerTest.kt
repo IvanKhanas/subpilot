@@ -4,7 +4,7 @@ import com.xeno.subpilot.subscription.dto.kafka.PaymentSucceededEvent
 import com.xeno.subpilot.subscription.dto.kafka.SubscriptionActivatedEvent
 import com.xeno.subpilot.subscription.properties.PlanProperties
 import com.xeno.subpilot.subscription.properties.ProviderAllocation
-import com.xeno.subpilot.subscription.properties.SubscriptionProperties
+import com.xeno.subpilot.subscription.repository.PlanRepository
 import com.xeno.subpilot.subscription.service.SubscriptionActivationService
 import com.xeno.subpilot.subscription.service.kafka.PaymentSucceededConsumer
 import io.mockk.every
@@ -19,7 +19,6 @@ import org.springframework.kafka.core.KafkaTemplate
 import tools.jackson.databind.ObjectMapper
 
 import java.math.BigDecimal
-import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
@@ -32,41 +31,31 @@ class PaymentSucceededConsumerTest {
     lateinit var activationService: SubscriptionActivationService
 
     @MockK
+    lateinit var planRepository: PlanRepository
+
+    @MockK
     lateinit var kafkaTemplate: KafkaTemplate<String, String>
 
     @MockK
     lateinit var objectMapper: ObjectMapper
 
-    private lateinit var consumer: PaymentSucceededConsumer
-
-    private val properties =
-        SubscriptionProperties(
-            freeQuota = 10,
-            freeQuotaResetPeriod = Duration.ofDays(7),
-            defaultModel = "gpt-4o-mini",
-            modelProviders = mapOf("gpt-4o-mini" to "openai"),
-            modelCosts = mapOf("gpt-4o-mini" to 1),
-            plans =
-                mapOf(
-                    "openai-basic" to
-                        PlanProperties(
-                            provider = "openai",
-                            displayName = "Basic - 100 requests for OpenAI",
-                            price = BigDecimal("199.00"),
-                            currency = "RUB",
-                            allocations =
-                                listOf(
-                                    ProviderAllocation(provider = "openai", requests = 100),
-                                ),
-                        ),
-                ),
+    private val openaiBasicPlan =
+        PlanProperties(
+            provider = "openai",
+            displayName = "Basic - 100 requests for OpenAI",
+            price = BigDecimal("199.00"),
+            currency = "RUB",
+            allocations = listOf(ProviderAllocation(provider = "openai", requests = 100)),
         )
+
+    private lateinit var consumer: PaymentSucceededConsumer
 
     @BeforeEach
     fun setUp() {
-        consumer =
-            PaymentSucceededConsumer(activationService, properties, kafkaTemplate, objectMapper)
+        consumer = PaymentSucceededConsumer(activationService, planRepository, kafkaTemplate, objectMapper)
         every { kafkaTemplate.send(any(), any()) } returns CompletableFuture.completedFuture(null)
+        every { planRepository.findById("openai-basic") } returns openaiBasicPlan
+        every { planRepository.findById("unknown-plan") } returns null
     }
 
     @Test
@@ -78,8 +67,7 @@ class PaymentSucceededConsumerTest {
                 planId = "openai-basic",
                 amount = BigDecimal("199.00"),
             )
-        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns
-            paymentEvent
+        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns paymentEvent
         every { activationService.activate(paymentEvent) } returns true
         val publishedEvent = slot<Any>()
         every { objectMapper.writeValueAsString(capture(publishedEvent)) } returns """{"ok":true}"""
@@ -106,8 +94,7 @@ class PaymentSucceededConsumerTest {
                 planId = "openai-basic",
                 amount = BigDecimal("199.00"),
             )
-        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns
-            paymentEvent
+        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns paymentEvent
         every { activationService.activate(paymentEvent) } returns false
 
         consumer.consume("event-json")
@@ -117,7 +104,7 @@ class PaymentSucceededConsumerTest {
     }
 
     @Test
-    fun `consume does not publish when plan is no longer configured`() {
+    fun `consume does not publish when plan is not found`() {
         val paymentEvent =
             PaymentSucceededEvent(
                 paymentId = UUID.randomUUID(),
@@ -125,8 +112,7 @@ class PaymentSucceededConsumerTest {
                 planId = "unknown-plan",
                 amount = BigDecimal("199.00"),
             )
-        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns
-            paymentEvent
+        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns paymentEvent
         every { activationService.activate(paymentEvent) } returns true
 
         consumer.consume("event-json")

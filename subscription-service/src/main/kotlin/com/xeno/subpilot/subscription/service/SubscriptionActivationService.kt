@@ -1,7 +1,7 @@
 package com.xeno.subpilot.subscription.service
 
 import com.xeno.subpilot.subscription.dto.kafka.PaymentSucceededEvent
-import com.xeno.subpilot.subscription.properties.SubscriptionProperties
+import com.xeno.subpilot.subscription.repository.PlanRepository
 import com.xeno.subpilot.subscription.repository.UserSubscriptionActivationRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
@@ -15,7 +15,7 @@ private val logger = KotlinLogging.logger {}
 
 @Service
 class SubscriptionActivationService(
-    private val subscriptionProperties: SubscriptionProperties,
+    private val planRepository: PlanRepository,
     private val activationRepository: UserSubscriptionActivationRepository,
     private val clock: Clock,
 ) {
@@ -36,7 +36,7 @@ class SubscriptionActivationService(
         planId: String,
         paymentId: UUID,
     ): Boolean {
-        val plan = subscriptionProperties.plans[planId]
+        val plan = planRepository.findById(planId)
         if (plan == null) {
             logger.atWarn {
                 message = "subscription_activation_unknown_plan"

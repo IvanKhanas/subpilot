@@ -11,5 +11,4 @@ data class SubscriptionProperties(
     val defaultModel: String,
     val modelProviders: Map<String, String>,
     val modelCosts: Map<String, Int>,
-    val plans: Map<String, PlanProperties>,
 )

@@ -2,7 +2,7 @@ package com.xeno.subpilot.subscription.service.kafka
 
 import com.xeno.subpilot.subscription.dto.kafka.PaymentSucceededEvent
 import com.xeno.subpilot.subscription.dto.kafka.SubscriptionActivatedEvent
-import com.xeno.subpilot.subscription.properties.SubscriptionProperties
+import com.xeno.subpilot.subscription.repository.PlanRepository
 import com.xeno.subpilot.subscription.service.SubscriptionActivationService
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.kafka.core.KafkaTemplate
@@ -12,7 +12,7 @@ import tools.jackson.databind.ObjectMapper
 @Component
 class PaymentSucceededConsumer(
     private val activationService: SubscriptionActivationService,
-    private val subscriptionProperties: SubscriptionProperties,
+    private val planRepository: PlanRepository,
     private val kafkaTemplate: KafkaTemplate<String, String>,
     private val objectMapper: ObjectMapper,
 ) {
@@ -27,7 +27,7 @@ class PaymentSucceededConsumer(
     }
 
     private fun publishActivated(event: PaymentSucceededEvent) {
-        val plan = subscriptionProperties.plans[event.planId] ?: return
+        val plan = planRepository.findById(event.planId) ?: return
         val notification =
             SubscriptionActivatedEvent(
                 userId = event.userId,

@@ -35,6 +35,7 @@ import com.xeno.subpilot.subscription.dto.FreeProviderBalance as ServiceFreeProv
 import com.xeno.subpilot.subscription.dto.PaidProviderBalance as ServicePaidProviderBalance
 import com.xeno.subpilot.subscription.properties.PlanProperties
 import com.xeno.subpilot.subscription.properties.SubscriptionProperties
+import com.xeno.subpilot.subscription.repository.PlanRepository
 import com.xeno.subpilot.subscription.service.AccessService
 import com.xeno.subpilot.subscription.service.BalanceService
 import com.xeno.subpilot.subscription.service.ModelPreferenceService
@@ -62,6 +63,7 @@ class SubscriptionGrpcService(
     private val balanceService: BalanceService,
     private val activationService: SubscriptionActivationService,
     private val subscriptionProperties: SubscriptionProperties,
+    private val planRepository: PlanRepository,
     private val ioDispatcher: CoroutineContext,
 ) : SubscriptionServiceGrpcKt.SubscriptionServiceCoroutineImplBase() {
 
@@ -156,9 +158,8 @@ class SubscriptionGrpcService(
     override suspend fun getPlans(request: GetPlansRequest): GetPlansResponse {
         logger.atDebug { message = "grpc_get_plans" }
         val planInfoList =
-            subscriptionProperties.plans.map { (id, planConfig) ->
-                planConfigToProto(id, planConfig)
-            }
+            withContext(ioDispatcher) { planRepository.findAllActive() }
+                .map { (id, planConfig) -> planConfigToProto(id, planConfig) }
         return GetPlansResponse.newBuilder().addAllPlans(planInfoList).build()
     }
 
@@ -168,7 +169,7 @@ class SubscriptionGrpcService(
             payload = mapOf("plan_id" to request.planId)
         }
         val planConfig =
-            subscriptionProperties.plans[request.planId]
+            withContext(ioDispatcher) { planRepository.findById(request.planId) }
                 ?: throw StatusException(
                     Status.NOT_FOUND.withDescription("Unknown plan: ${request.planId}"),
                 )

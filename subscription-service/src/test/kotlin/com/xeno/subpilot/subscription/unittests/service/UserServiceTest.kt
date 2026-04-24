@@ -40,7 +40,6 @@ class UserServiceTest {
             defaultModel = "gpt-4o-mini",
             modelProviders = mapOf("gpt-4o" to "openai", "gpt-4o-mini" to "openai"),
             modelCosts = mapOf("gpt-4o" to 3, "gpt-4o-mini" to 1),
-            plans = emptyMap(),
         )
 
     private val userId = 42L

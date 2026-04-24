@@ -20,6 +20,7 @@ import com.xeno.subpilot.subscription.grpc.SubscriptionGrpcService
 import com.xeno.subpilot.subscription.properties.PlanProperties
 import com.xeno.subpilot.subscription.properties.ProviderAllocation
 import com.xeno.subpilot.subscription.properties.SubscriptionProperties
+import com.xeno.subpilot.subscription.repository.PlanRepository
 import com.xeno.subpilot.subscription.service.AccessService
 import com.xeno.subpilot.subscription.service.BalanceService
 import com.xeno.subpilot.subscription.service.ModelPreferenceService
@@ -70,6 +71,9 @@ class SubscriptionGrpcServiceTest {
     @MockK
     lateinit var activationService: SubscriptionActivationService
 
+    @MockK
+    lateinit var planRepository: PlanRepository
+
     private val properties =
         SubscriptionProperties(
             freeQuota = 10,
@@ -77,32 +81,27 @@ class SubscriptionGrpcServiceTest {
             defaultModel = "gpt-4o-mini",
             modelProviders = mapOf("gpt-4o" to "openai", "gpt-4o-mini" to "openai"),
             modelCosts = mapOf("gpt-4o" to 3, "gpt-4o-mini" to 1),
-            plans =
-                mapOf(
-                    "openai-basic" to
-                        PlanProperties(
-                            provider = "openai",
-                            displayName = "Basic - 100 requests for OpenAI",
-                            price = BigDecimal("199.00"),
-                            currency = "RUB",
-                            allocations =
-                                listOf(
-                                    ProviderAllocation(provider = "openai", requests = 100),
-                                ),
-                        ),
-                    "combo-basic" to
-                        PlanProperties(
-                            provider = "openai",
-                            displayName = "Combo Basic - 50 OpenAI + 50 Anthropic",
-                            price = BigDecimal("299.00"),
-                            currency = "RUB",
-                            allocations =
-                                listOf(
-                                    ProviderAllocation(provider = "openai", requests = 50),
-                                    ProviderAllocation(provider = "anthropic", requests = 50),
-                                ),
-                        ),
-                ),
+        )
+
+    private val openaiBasicPlan =
+        PlanProperties(
+            provider = "openai",
+            displayName = "Basic - 100 requests for OpenAI",
+            price = BigDecimal("199.00"),
+            currency = "RUB",
+            allocations = listOf(ProviderAllocation(provider = "openai", requests = 100)),
+        )
+
+    private val comboPlan =
+        PlanProperties(
+            provider = "openai",
+            displayName = "Combo Basic - 50 OpenAI + 50 Anthropic",
+            price = BigDecimal("299.00"),
+            currency = "RUB",
+            allocations = listOf(
+                ProviderAllocation(provider = "openai", requests = 50),
+                ProviderAllocation(provider = "anthropic", requests = 50),
+            ),
         )
 
     private lateinit var service: SubscriptionGrpcService
@@ -117,8 +116,16 @@ class SubscriptionGrpcServiceTest {
                 balanceService,
                 activationService,
                 properties,
+                planRepository,
                 UnconfinedTestDispatcher(),
             )
+        every { planRepository.findAllActive() } returns mapOf(
+            "openai-basic" to openaiBasicPlan,
+            "combo-basic" to comboPlan,
+        )
+        every { planRepository.findById("openai-basic") } returns openaiBasicPlan
+        every { planRepository.findById("combo-basic") } returns comboPlan
+        every { planRepository.findById("unknown-plan") } returns null
     }
 
     @Test
