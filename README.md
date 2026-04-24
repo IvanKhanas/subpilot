@@ -443,12 +443,6 @@ cp .env.example .env
 docker compose up --build
 ```
 
-To run just the bot without needing an OpenAI key:
-
-```bash
-./run.sh
-```
-
 Logs are written to `<service-name>.log` files in the project root.
 
 Kafka UI (browse topics and messages): `http://localhost:8090`
