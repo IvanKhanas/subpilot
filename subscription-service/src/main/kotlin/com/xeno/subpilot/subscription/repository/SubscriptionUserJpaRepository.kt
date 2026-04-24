@@ -32,4 +32,8 @@ interface SubscriptionUserJpaRepository : JpaRepository<SubscriptionUser, Long> 
         nativeQuery = true,
     )
     fun insertIfAbsent(userId: Long): Int
+
+    @Modifying
+    @Query("UPDATE SubscriptionUser u SET u.blocked = :blocked WHERE u.userId = :userId")
+    fun setBlocked(userId: Long, blocked: Boolean): Int
 }

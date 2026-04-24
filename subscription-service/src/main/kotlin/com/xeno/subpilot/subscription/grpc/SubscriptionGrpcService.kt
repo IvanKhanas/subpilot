@@ -17,6 +17,8 @@ package com.xeno.subpilot.subscription.grpc
 
 import com.xeno.subpilot.proto.subscription.v1.ActivateSubscriptionRequest
 import com.xeno.subpilot.proto.subscription.v1.ActivateSubscriptionResponse
+import com.xeno.subpilot.proto.subscription.v1.BlockUserRequest
+import com.xeno.subpilot.proto.subscription.v1.BlockUserResponse
 import com.xeno.subpilot.proto.subscription.v1.CheckAccessRequest
 import com.xeno.subpilot.proto.subscription.v1.CheckAccessResponse
 import com.xeno.subpilot.proto.subscription.v1.DenialReason
@@ -28,6 +30,8 @@ import com.xeno.subpilot.proto.subscription.v1.GetPlanInfoRequest
 import com.xeno.subpilot.proto.subscription.v1.GetPlanInfoResponse
 import com.xeno.subpilot.proto.subscription.v1.GetPlansRequest
 import com.xeno.subpilot.proto.subscription.v1.GetPlansResponse
+import com.xeno.subpilot.proto.subscription.v1.GetUserInfoRequest
+import com.xeno.subpilot.proto.subscription.v1.GetUserInfoResponse
 import com.xeno.subpilot.proto.subscription.v1.PlanAllocation
 import com.xeno.subpilot.proto.subscription.v1.PlanInfo
 import com.xeno.subpilot.proto.subscription.v1.ProviderBalance as ProtoProviderBalance
@@ -38,13 +42,18 @@ import com.xeno.subpilot.proto.subscription.v1.RegisterUserResponse
 import com.xeno.subpilot.proto.subscription.v1.SetModelPreferenceRequest
 import com.xeno.subpilot.proto.subscription.v1.SetModelPreferenceResponse
 import com.xeno.subpilot.proto.subscription.v1.SubscriptionServiceGrpcKt
+import com.xeno.subpilot.proto.subscription.v1.UnblockUserRequest
+import com.xeno.subpilot.proto.subscription.v1.UnblockUserResponse
 import com.xeno.subpilot.proto.subscription.v1.activateSubscriptionResponse
+import com.xeno.subpilot.proto.subscription.v1.blockUserResponse
 import com.xeno.subpilot.proto.subscription.v1.checkAccessResponse
 import com.xeno.subpilot.proto.subscription.v1.getModelPreferenceResponse
 import com.xeno.subpilot.proto.subscription.v1.getPlanInfoResponse
+import com.xeno.subpilot.proto.subscription.v1.getUserInfoResponse
 import com.xeno.subpilot.proto.subscription.v1.refundAccessResponse
 import com.xeno.subpilot.proto.subscription.v1.registerUserResponse
 import com.xeno.subpilot.proto.subscription.v1.setModelPreferenceResponse
+import com.xeno.subpilot.proto.subscription.v1.unblockUserResponse
 import com.xeno.subpilot.subscription.dto.DenialReason as ServiceDenialReason
 import com.xeno.subpilot.subscription.dto.FreeProviderBalance as ServiceFreeProviderBalance
 import com.xeno.subpilot.subscription.dto.PaidProviderBalance as ServicePaidProviderBalance
@@ -55,6 +64,7 @@ import com.xeno.subpilot.subscription.service.AccessService
 import com.xeno.subpilot.subscription.service.BalanceService
 import com.xeno.subpilot.subscription.service.ModelPreferenceService
 import com.xeno.subpilot.subscription.service.SubscriptionActivationService
+import com.xeno.subpilot.subscription.service.UserAdminService
 import com.xeno.subpilot.subscription.service.UserService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.grpc.Status
@@ -77,6 +87,7 @@ class SubscriptionGrpcService(
     private val modelPreferenceService: ModelPreferenceService,
     private val balanceService: BalanceService,
     private val activationService: SubscriptionActivationService,
+    private val userAdminService: UserAdminService,
     private val subscriptionProperties: SubscriptionProperties,
     private val planRepository: PlanRepository,
     private val ioDispatcher: CoroutineContext,
@@ -253,6 +264,46 @@ class SubscriptionGrpcService(
             )
         }
         return activateSubscriptionResponse { }
+    }
+
+    override suspend fun getUserInfo(request: GetUserInfoRequest): GetUserInfoResponse {
+        logger.atDebug {
+            message = "grpc_get_user_info"
+            payload = mapOf("user_id" to request.userId)
+        }
+        val user = withContext(ioDispatcher) { userAdminService.getUserInfo(request.userId) }
+        return getUserInfoResponse {
+            found = user != null
+            if (user != null) {
+                blocked = user.blocked
+                role = user.role.name
+                registeredAtEpoch = user.registeredAt.epochSecond
+            }
+        }
+    }
+
+    override suspend fun blockUser(request: BlockUserRequest): BlockUserResponse {
+        logger.atInfo {
+            message = "grpc_block_user"
+            payload = mapOf("user_id" to request.userId)
+        }
+        withContext(ioDispatcher) {
+            runCatching { userAdminService.blockUser(request.userId) }
+                .onFailure { throw StatusException(Status.NOT_FOUND.withDescription("User ${request.userId} not found")) }
+        }
+        return blockUserResponse {}
+    }
+
+    override suspend fun unblockUser(request: UnblockUserRequest): UnblockUserResponse {
+        logger.atInfo {
+            message = "grpc_unblock_user"
+            payload = mapOf("user_id" to request.userId)
+        }
+        withContext(ioDispatcher) {
+            runCatching { userAdminService.unblockUser(request.userId) }
+                .onFailure { throw StatusException(Status.NOT_FOUND.withDescription("User ${request.userId} not found")) }
+        }
+        return unblockUserResponse {}
     }
 
     private fun freeBalanceToProto(balance: ServiceFreeProviderBalance) =

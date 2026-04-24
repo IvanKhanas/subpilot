@@ -21,4 +21,6 @@ interface SubscriptionUserRepository {
     fun findById(userId: Long): SubscriptionUser?
 
     fun insertIfAbsent(userId: Long): Boolean
+
+    fun setBlocked(userId: Long, blocked: Boolean)
 }
