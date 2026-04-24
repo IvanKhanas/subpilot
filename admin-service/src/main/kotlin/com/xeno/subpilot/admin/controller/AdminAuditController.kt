@@ -19,7 +19,6 @@ import com.xeno.subpilot.admin.dto.AuditLogResponse
 import com.xeno.subpilot.admin.service.AuditService
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
-import org.springframework.data.web.PageableDefault
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -29,8 +28,6 @@ import org.springframework.web.bind.annotation.RestController
 class AdminAuditController(private val auditService: AuditService) {
 
     @GetMapping
-    fun getAuditLog(
-        @PageableDefault(size = 50, sort = ["createdAt"]) pageable: Pageable,
-    ): Page<AuditLogResponse> =
+    fun getAuditLog(pageable: Pageable): Page<AuditLogResponse> =
         auditService.getPage(pageable).map { AuditLogResponse.from(it) }
 }

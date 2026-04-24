@@ -9,6 +9,11 @@ spring:
     password: ${ADMIN_DB_PASSWORD:admin}
   jpa:
     open-in-view: false
+  data:
+    web:
+      pageable:
+        default-page-size: 50
+        max-page-size: 200
   liquibase:
     enabled: false
   grpc:
