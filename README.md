@@ -89,10 +89,10 @@ tg-bot-service
 ### Viewing subscription plans
 
 ```
-tg-bot-service → payment-service.GetPlans
+tg-bot-service → subscription-service.GetPlans
 ```
 
-`payment-service` reads plan definitions forwarded from `subscription-service` and returns them with prices and request counts.
+`subscription-service` reads active plans and their request allocations from the database and returns them. Plans live entirely in the `subscription-service` PostgreSQL database (`subscription_plan` + `subscription_plan_allocation`).
 
 ### Paying with card
 
