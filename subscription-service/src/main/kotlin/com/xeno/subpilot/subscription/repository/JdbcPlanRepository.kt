@@ -30,12 +30,20 @@ class JdbcPlanRepository(
 
     override fun findById(planId: String): PlanProperties? {
         val rows =
-            jdbcTemplate.query(PLAN_WITH_ALLOCATIONS_SQL + " WHERE p.plan_id = ? AND p.active = true", ::mapRow, planId)
+            jdbcTemplate.query(
+                PLAN_WITH_ALLOCATIONS_SQL + " WHERE p.plan_id = ? AND p.active = true",
+                ::mapRow,
+                planId,
+            )
         return rows.toPlanProperties().values.firstOrNull()
     }
 
     override fun findAllActive(): Map<String, PlanProperties> {
-        val rows = jdbcTemplate.query(PLAN_WITH_ALLOCATIONS_SQL + " WHERE p.active = true ORDER BY p.plan_id", ::mapRow)
+        val rows =
+            jdbcTemplate.query(
+                PLAN_WITH_ALLOCATIONS_SQL + " WHERE p.active = true ORDER BY p.plan_id",
+                ::mapRow,
+            )
         return rows.toPlanProperties()
     }
 
