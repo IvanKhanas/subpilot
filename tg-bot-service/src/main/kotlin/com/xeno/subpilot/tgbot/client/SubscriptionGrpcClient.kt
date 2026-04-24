@@ -18,10 +18,13 @@ package com.xeno.subpilot.tgbot.client
 import com.xeno.subpilot.proto.subscription.v1.GetPlansRequest
 import com.xeno.subpilot.proto.subscription.v1.PlanInfo as ProtoPlanInfo
 import com.xeno.subpilot.proto.subscription.v1.SubscriptionServiceGrpcKt
+import com.xeno.subpilot.proto.subscription.v1.blockUserRequest
 import com.xeno.subpilot.proto.subscription.v1.getBalanceRequest
 import com.xeno.subpilot.proto.subscription.v1.getPlanInfoRequest
+import com.xeno.subpilot.proto.subscription.v1.getUserInfoRequest
 import com.xeno.subpilot.proto.subscription.v1.registerUserRequest
 import com.xeno.subpilot.proto.subscription.v1.setModelPreferenceRequest
+import com.xeno.subpilot.proto.subscription.v1.unblockUserRequest
 import com.xeno.subpilot.tgbot.dto.BalanceInfo
 import com.xeno.subpilot.tgbot.dto.FreeProviderBalance
 import com.xeno.subpilot.tgbot.dto.ModelPreferenceResult
@@ -29,6 +32,7 @@ import com.xeno.subpilot.tgbot.dto.PaidProviderBalance
 import com.xeno.subpilot.tgbot.dto.PlanAllocation
 import com.xeno.subpilot.tgbot.dto.PlanInfo
 import com.xeno.subpilot.tgbot.dto.RegistrationResult
+import com.xeno.subpilot.tgbot.dto.UserInfoResult
 import com.xeno.subpilot.tgbot.exception.SubscriptionServiceException
 import com.xeno.subpilot.tgbot.ux.AiProvider
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -163,6 +167,58 @@ class SubscriptionGrpcClient(
                 payload = mapOf("user_id" to userId)
             }
             throw SubscriptionServiceException("Failed to get balance", ex)
+        }
+    }
+
+    override suspend fun getUserInfo(userId: Long): UserInfoResult? {
+        return try {
+            val response =
+                grpcRetry.retryOnUnavailable {
+                    stub.getUserInfo(getUserInfoRequest { this.userId = userId })
+                }
+            if (!response.found) return null
+            UserInfoResult(
+                blocked = response.blocked,
+                role = response.role,
+                registeredAtEpoch = response.registeredAtEpoch,
+            )
+        } catch (ex: StatusException) {
+            logger.atWarn {
+                message = "subscription_get_user_info_failed"
+                cause = ex
+                payload = mapOf("user_id" to userId)
+            }
+            null
+        }
+    }
+
+    override suspend fun blockUser(userId: Long) {
+        try {
+            grpcRetry.retryOnUnavailable {
+                stub.blockUser(blockUserRequest { this.userId = userId })
+            }
+        } catch (ex: StatusException) {
+            logger.atError {
+                message = "subscription_block_user_failed"
+                cause = ex
+                payload = mapOf("user_id" to userId)
+            }
+            throw SubscriptionServiceException("Failed to block user $userId", ex)
+        }
+    }
+
+    override suspend fun unblockUser(userId: Long) {
+        try {
+            grpcRetry.retryOnUnavailable {
+                stub.unblockUser(unblockUserRequest { this.userId = userId })
+            }
+        } catch (ex: StatusException) {
+            logger.atError {
+                message = "subscription_unblock_user_failed"
+                cause = ex
+                payload = mapOf("user_id" to userId)
+            }
+            throw SubscriptionServiceException("Failed to unblock user $userId", ex)
         }
     }
 
