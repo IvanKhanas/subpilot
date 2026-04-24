@@ -62,11 +62,14 @@ spring-kafka = { group = "org.springframework.kafka", name = "spring-kafka" }
 spring-boot-starter-security = { group = "org.springframework.boot", name = "spring-boot-starter-security" }
 spring-boot-starter-oauth2-resource-server = { group = "org.springframework.boot", name = "spring-boot-starter-oauth2-resource-server" }
 spring-boot-starter-validation = { group = "org.springframework.boot", name = "spring-boot-starter-validation" }
+spring-boot-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator" }
+micrometer-registry-prometheus = { group = "io.micrometer", name = "micrometer-registry-prometheus" }
 springmockk = { group = "com.ninja-squad", name = "springmockk", version.ref = "springmockk" }
 
 [bundles]
 spring-boot-base = ["spring-boot-starter-web", "kotlin-reflect"]
 spring-boot-test = ["spring-boot-starter-test", "kotlin-test-junit5"]
+observability = ["spring-boot-starter-actuator", "micrometer-registry-prometheus"]
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

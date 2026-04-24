@@ -14,8 +14,10 @@ dependencies {
     testImplementation(platform(libs.spring.boot.bom))
 
     implementation(libs.bundles.spring.boot.base)
+    implementation(libs.bundles.observability)
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.starter.oauth2.resource.server)
+    implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.grpc.starter)
     implementation(libs.grpc.kotlin.stub)
     implementation(libs.kotlinx.coroutines.core)

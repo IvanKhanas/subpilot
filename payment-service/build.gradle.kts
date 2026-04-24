@@ -17,6 +17,7 @@ dependencies {
     implementation(platform(libs.spring.grpc.bom))
 
     implementation(libs.bundles.spring.boot.base)
+    implementation(libs.bundles.observability)
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.grpc.starter)
     implementation(libs.grpc.kotlin.stub)

@@ -19,6 +19,7 @@ dependencies {
     testImplementation(platform(libs.testcontainers.bom))
 
     implementation(libs.bundles.spring.boot.base)
+    implementation(libs.bundles.observability)
     implementation(libs.spring.boot.starter.data.redis)
     implementation(libs.spring.grpc.starter)
     implementation(libs.grpc.kotlin.stub)

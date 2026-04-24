@@ -1,0 +1,34 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: tg-bot-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["tg-bot-service:1991"]
+
+  - job_name: chat-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["chat-service:8082"]
+
+  - job_name: subscription-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["subscription-service:8083"]
+
+  - job_name: payment-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["payment-service:8084"]
+
+  - job_name: loyalty-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["loyalty-service:8085"]
+
+  - job_name: admin-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["admin-service:8087"]
