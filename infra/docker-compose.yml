@@ -36,7 +36,3 @@ services:
 
 volumes:
   grafana_data:
-
-networks:
-  subpilot_internal:
-    name: subpilot_internal
