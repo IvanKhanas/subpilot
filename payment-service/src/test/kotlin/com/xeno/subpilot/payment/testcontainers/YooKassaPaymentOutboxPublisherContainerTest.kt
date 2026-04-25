@@ -120,7 +120,7 @@ class YooKassaPaymentOutboxPublisherContainerTest {
             "seeded outbox event must be present",
         )
 
-        outboxPublisher.publish()
+        outboxPublisher.publishPending()
 
         assertTrue(
             hasNewTopicRecords(offsetBefore, Duration.ofSeconds(10)),
@@ -147,7 +147,7 @@ class YooKassaPaymentOutboxPublisherContainerTest {
         )
         val countBefore = outboxRepository.findUnpublished(100).size
 
-        outboxPublisher.publish()
+        outboxPublisher.publishPending()
 
         val countAfter = outboxRepository.findUnpublished(100).size
         assertEquals(
@@ -164,7 +164,7 @@ class YooKassaPaymentOutboxPublisherContainerTest {
 
     @Test
     fun `publish does not re-send already published events`() {
-        outboxPublisher.publish()
+        outboxPublisher.publishPending()
 
         val records = kafkaConsumer.poll(Duration.ofSeconds(2))
         assertTrue(

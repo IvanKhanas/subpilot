@@ -21,6 +21,7 @@ import com.xeno.subpilot.payment.dto.PlanDetails
 import com.xeno.subpilot.payment.exception.InvalidPlanException
 import com.xeno.subpilot.payment.grpc.PaymentGrpcService
 import com.xeno.subpilot.payment.service.YooKassaPaymentService
+import com.xeno.subpilot.payment.service.kafka.YooKassaPaymentOutboxPublisher
 import com.xeno.subpilot.proto.payment.v1.createPaymentRequest
 import io.grpc.Status
 import io.grpc.StatusException
@@ -50,6 +51,9 @@ class PaymentGrpcServiceTest {
     @MockK
     lateinit var paymentService: YooKassaPaymentService
 
+    @MockK(relaxed = true)
+    lateinit var outboxPublisher: YooKassaPaymentOutboxPublisher
+
     private lateinit var grpc: PaymentGrpcService
 
     companion object {
@@ -66,6 +70,7 @@ class PaymentGrpcServiceTest {
             PaymentGrpcService(
                 subscriptionGrpcClient = subscriptionGrpcClient,
                 paymentService = paymentService,
+                outboxPublisher = outboxPublisher,
                 ioDispatcher = UnconfinedTestDispatcher(),
             )
     }

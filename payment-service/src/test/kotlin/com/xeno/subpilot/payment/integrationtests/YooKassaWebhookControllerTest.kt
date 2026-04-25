@@ -18,7 +18,9 @@ package com.xeno.subpilot.payment.integrationtests
 import com.xeno.subpilot.payment.controller.YooKassaPaymentWebhookController
 import com.xeno.subpilot.payment.dto.kafka.YooKassaWebhookEvent
 import com.xeno.subpilot.payment.dto.kafka.YooKassaWebhookPayment
+import com.xeno.subpilot.payment.metrics.PaymentMetrics
 import com.xeno.subpilot.payment.service.YooKassaPaymentService
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
@@ -30,11 +32,17 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 import java.util.UUID
 
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+
 @ExtendWith(MockKExtension::class)
 class YooKassaWebhookControllerTest {
 
     @MockK(relaxed = true)
     lateinit var paymentService: YooKassaPaymentService
+
+    private val meterRegistry = SimpleMeterRegistry()
+    private val metrics = PaymentMetrics(meterRegistry)
 
     private lateinit var controller: YooKassaPaymentWebhookController
 
@@ -64,7 +72,7 @@ class YooKassaWebhookControllerTest {
 
     @BeforeEach
     fun setUp() {
-        controller = YooKassaPaymentWebhookController(paymentService)
+        controller = YooKassaPaymentWebhookController(paymentService, metrics)
     }
 
     @Test
@@ -96,5 +104,16 @@ class YooKassaWebhookControllerTest {
             eventSlot.captured.payment.id
                 .toString() == YOOKASSA_PAYMENT_ID,
         )
+    }
+
+    @Test
+    fun `handleWebhook increments webhook_failures_total and rethrows on service exception`() {
+        every { paymentService.handlePaymentWebhook(any()) } throws RuntimeException("db error")
+
+        assertFailsWith<RuntimeException> {
+            controller.handleWebhook(succeededEvent)
+        }
+
+        assertEquals(1.0, meterRegistry.counter("webhook_failures_total").count())
     }
 }

@@ -80,7 +80,7 @@ class YooKassaPaymentOutboxPublisherTest {
     fun `publish does nothing when no unpublished events`() {
         every { outboxRepository.findUnpublished(BATCH_SIZE) } returns emptyList()
 
-        publisher.publish()
+        publisher.publishPending()
 
         verify(exactly = 0) { kafkaTemplate.send(any<String>(), any<String>()) }
         verify(exactly = 0) { outboxRepository.markPublished(any(), any()) }
@@ -94,7 +94,7 @@ class YooKassaPaymentOutboxPublisherTest {
             CompletableFuture.completedFuture(null)
         every { outboxRepository.markPublished(any(), any()) } returns Unit
 
-        publisher.publish()
+        publisher.publishPending()
 
         verify { kafkaTemplate.send(TOPIC, PAYLOAD_1) }
         verify { kafkaTemplate.send(TOPIC, PAYLOAD_2) }
@@ -109,7 +109,7 @@ class YooKassaPaymentOutboxPublisherTest {
         val markedIds = slot<List<Long>>()
         every { outboxRepository.markPublished(capture(markedIds), any()) } returns Unit
 
-        publisher.publish()
+        publisher.publishPending()
 
         assertEquals(listOf(1L, 2L), markedIds.captured)
     }
@@ -118,7 +118,7 @@ class YooKassaPaymentOutboxPublisherTest {
     fun `publish uses batch size from properties`() {
         every { outboxRepository.findUnpublished(BATCH_SIZE) } returns emptyList()
 
-        publisher.publish()
+        publisher.publishPending()
 
         verify { outboxRepository.findUnpublished(BATCH_SIZE) }
     }

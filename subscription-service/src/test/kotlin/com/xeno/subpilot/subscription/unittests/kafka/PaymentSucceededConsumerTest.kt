@@ -17,11 +17,13 @@ package com.xeno.subpilot.subscription.unittests.kafka
 
 import com.xeno.subpilot.subscription.dto.kafka.PaymentSucceededEvent
 import com.xeno.subpilot.subscription.dto.kafka.SubscriptionActivatedEvent
+import com.xeno.subpilot.subscription.metrics.SubscriptionMetrics
 import com.xeno.subpilot.subscription.properties.PlanProperties
 import com.xeno.subpilot.subscription.properties.ProviderAllocation
 import com.xeno.subpilot.subscription.repository.PlanRepository
 import com.xeno.subpilot.subscription.service.SubscriptionActivationService
 import com.xeno.subpilot.subscription.service.kafka.PaymentSucceededConsumer
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
@@ -63,6 +65,9 @@ class PaymentSucceededConsumerTest {
             allocations = listOf(ProviderAllocation(provider = "openai", requests = 100)),
         )
 
+    private val meterRegistry = SimpleMeterRegistry()
+    private val metrics = SubscriptionMetrics(meterRegistry)
+
     private lateinit var consumer: PaymentSucceededConsumer
 
     @BeforeEach
@@ -73,6 +78,7 @@ class PaymentSucceededConsumerTest {
                 planRepository,
                 kafkaTemplate,
                 objectMapper,
+                metrics,
             )
         every { kafkaTemplate.send(any(), any()) } returns CompletableFuture.completedFuture(null)
         every { planRepository.findById("openai-basic") } returns openaiBasicPlan
@@ -155,5 +161,40 @@ class PaymentSucceededConsumerTest {
 
         verify(exactly = 0) { objectMapper.writeValueAsString(any()) }
         verify(exactly = 0) { kafkaTemplate.send(any(), any()) }
+    }
+
+    @Test
+    fun `consume increments subscription_activations_total when activated`() {
+        val paymentEvent =
+            PaymentSucceededEvent(
+                paymentId = UUID.randomUUID(),
+                userId = 42L,
+                planId = "openai-basic",
+                amount = BigDecimal("199.00"),
+            )
+        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns paymentEvent
+        every { activationService.activate(paymentEvent) } returns true
+        every { objectMapper.writeValueAsString(any()) } returns """{"ok":true}"""
+
+        consumer.consume("event-json")
+
+        assertEquals(1.0, meterRegistry.counter("subscription_activations_total").count())
+    }
+
+    @Test
+    fun `consume does not increment subscription_activations_total when not activated`() {
+        val paymentEvent =
+            PaymentSucceededEvent(
+                paymentId = UUID.randomUUID(),
+                userId = 42L,
+                planId = "openai-basic",
+                amount = BigDecimal("199.00"),
+            )
+        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns paymentEvent
+        every { activationService.activate(paymentEvent) } returns false
+
+        consumer.consume("event-json")
+
+        assertEquals(0.0, meterRegistry.counter("subscription_activations_total").count())
     }
 }

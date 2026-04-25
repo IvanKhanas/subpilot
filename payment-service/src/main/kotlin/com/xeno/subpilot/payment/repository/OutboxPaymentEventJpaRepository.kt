@@ -34,6 +34,8 @@ interface OutboxPaymentEventJpaRepository : JpaRepository<OutboxPaymentEvent, Lo
         @Param("limit") limit: Int,
     ): List<OutboxPaymentEvent>
 
+    fun countByPublishedAtIsNull(): Long
+
     @Modifying
     @Query(
         "UPDATE OutboxPaymentEvent event" +

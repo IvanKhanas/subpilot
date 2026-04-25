@@ -16,6 +16,7 @@
 package com.xeno.subpilot.payment.controller
 
 import com.xeno.subpilot.payment.dto.kafka.YooKassaWebhookEvent
+import com.xeno.subpilot.payment.metrics.PaymentMetrics
 import com.xeno.subpilot.payment.service.YooKassaPaymentService
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -24,12 +25,18 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 class YooKassaPaymentWebhookController(
     private val yooKassaPaymentService: YooKassaPaymentService,
+    private val metrics: PaymentMetrics,
 ) {
 
     @PostMapping("/payment/webhook")
     fun handleWebhook(
         @RequestBody event: YooKassaWebhookEvent,
     ) {
-        yooKassaPaymentService.handlePaymentWebhook(event)
+        try {
+            yooKassaPaymentService.handlePaymentWebhook(event)
+        } catch (ex: Exception) {
+            metrics.webhookFailures.increment()
+            throw ex
+        }
     }
 }

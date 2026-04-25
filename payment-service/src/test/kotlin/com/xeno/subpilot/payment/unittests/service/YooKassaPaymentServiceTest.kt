@@ -23,9 +23,11 @@ import com.xeno.subpilot.payment.dto.kafka.YooKassaWebhookPayment
 import com.xeno.subpilot.payment.entity.OutboxPaymentEvent
 import com.xeno.subpilot.payment.entity.Payment
 import com.xeno.subpilot.payment.entity.PaymentStatus
+import com.xeno.subpilot.payment.metrics.PaymentMetrics
 import com.xeno.subpilot.payment.repository.OutboxPaymentEventJpaRepository
 import com.xeno.subpilot.payment.repository.PaymentJpaRepository
 import com.xeno.subpilot.payment.service.YooKassaPaymentService
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
@@ -63,6 +65,8 @@ class YooKassaPaymentServiceTest {
             Instant.parse("2025-01-15T10:00:00Z"),
             ZoneOffset.UTC,
         )
+    private val meterRegistry = SimpleMeterRegistry()
+    private val metrics = PaymentMetrics(meterRegistry)
 
     private lateinit var service: YooKassaPaymentService
 
@@ -86,6 +90,7 @@ class YooKassaPaymentServiceTest {
                 outboxPaymentEventJpaRepository = outboxRepository,
                 objectMapper = objectMapper,
                 clock = fixedClock,
+                metrics = metrics,
             )
     }
 
@@ -231,6 +236,29 @@ class YooKassaPaymentServiceTest {
         service.handlePaymentWebhook(webhookEvent(EVENT_SUCCEEDED))
 
         verify(exactly = 0) { outboxRepository.save(any()) }
+    }
+
+    @Test
+    fun `handlePaymentWebhook increments payments_succeeded_total on success`() {
+        every { paymentJpaRepository.findByYooKassaPaymentId(YOOKASSA_PAYMENT_ID) } returns
+            pendingPayment()
+        every { paymentJpaRepository.updateStatusIfPending(any(), any(), any()) } returns 1
+        every { outboxRepository.save(any()) } answers { firstArg() }
+
+        service.handlePaymentWebhook(webhookEvent(EVENT_SUCCEEDED))
+
+        assertEquals(1.0, meterRegistry.counter("payments_succeeded_total").count())
+    }
+
+    @Test
+    fun `handlePaymentWebhook does not increment payments_succeeded_total when idempotent`() {
+        every { paymentJpaRepository.findByYooKassaPaymentId(YOOKASSA_PAYMENT_ID) } returns
+            pendingPayment()
+        every { paymentJpaRepository.updateStatusIfPending(any(), any(), any()) } returns 0
+
+        service.handlePaymentWebhook(webhookEvent(EVENT_SUCCEEDED))
+
+        assertEquals(0.0, meterRegistry.counter("payments_succeeded_total").count())
     }
 
     private fun givenSaveReturnsPaymentWithId() {

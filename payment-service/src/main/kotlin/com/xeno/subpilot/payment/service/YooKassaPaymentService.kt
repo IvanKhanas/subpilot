@@ -23,6 +23,7 @@ import com.xeno.subpilot.payment.dto.kafka.YooKassaWebhookEvent
 import com.xeno.subpilot.payment.entity.OutboxPaymentEvent
 import com.xeno.subpilot.payment.entity.Payment
 import com.xeno.subpilot.payment.entity.PaymentStatus
+import com.xeno.subpilot.payment.metrics.PaymentMetrics
 import com.xeno.subpilot.payment.repository.OutboxPaymentEventJpaRepository
 import com.xeno.subpilot.payment.repository.PaymentJpaRepository
 import org.springframework.stereotype.Service
@@ -39,6 +40,7 @@ class YooKassaPaymentService(
     private val outboxPaymentEventJpaRepository: OutboxPaymentEventJpaRepository,
     private val objectMapper: ObjectMapper,
     private val clock: Clock,
+    private val metrics: PaymentMetrics,
 ) {
 
     @Transactional
@@ -80,6 +82,8 @@ class YooKassaPaymentService(
         val updated = paymentJpaRepository.updateStatusIfPending(payment.id!!, newStatus, now)
 
         if (updated == 0) return
+
+        metrics.paymentsSucceeded.increment()
 
         outboxPaymentEventJpaRepository.save(
             OutboxPaymentEvent(

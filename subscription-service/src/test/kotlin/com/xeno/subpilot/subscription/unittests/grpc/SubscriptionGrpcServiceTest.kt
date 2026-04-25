@@ -40,6 +40,7 @@ import com.xeno.subpilot.subscription.service.AccessService
 import com.xeno.subpilot.subscription.service.BalanceService
 import com.xeno.subpilot.subscription.service.ModelPreferenceService
 import com.xeno.subpilot.subscription.service.SubscriptionActivationService
+import com.xeno.subpilot.subscription.service.UserAdminService
 import com.xeno.subpilot.subscription.service.UserService
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
@@ -86,6 +87,9 @@ class SubscriptionGrpcServiceTest {
     @MockK
     lateinit var activationService: SubscriptionActivationService
 
+    @MockK(relaxed = true)
+    lateinit var userAdminService: UserAdminService
+
     @MockK
     lateinit var planRepository: PlanRepository
 
@@ -131,6 +135,7 @@ class SubscriptionGrpcServiceTest {
                 modelPreferenceService,
                 balanceService,
                 activationService,
+                userAdminService,
                 properties,
                 planRepository,
                 UnconfinedTestDispatcher(),
