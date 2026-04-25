@@ -15,6 +15,7 @@
  */
 package com.xeno.subpilot.subscription.service
 
+import com.xeno.subpilot.subscription.metrics.SubscriptionMetrics
 import com.xeno.subpilot.subscription.properties.SubscriptionProperties
 import com.xeno.subpilot.subscription.repository.SubscriptionUserRepository
 import com.xeno.subpilot.subscription.repository.UserFreeQuotaRepository
@@ -33,6 +34,7 @@ class UserService(
     private val freeQuotaRepository: UserFreeQuotaRepository,
     private val modelPreferenceRepository: UserModelPreferenceRepository,
     private val properties: SubscriptionProperties,
+    private val metrics: SubscriptionMetrics,
 ) {
 
     @Transactional
@@ -47,6 +49,7 @@ class UserService(
             LocalDateTime.now().plus(properties.freeQuotaResetPeriod),
         )
         modelPreferenceRepository.upsert(userId, properties.defaultModel)
+        metrics.userRegistrations.increment()
         return true
     }
 }

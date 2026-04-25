@@ -20,8 +20,10 @@ import com.xeno.subpilot.chat.client.SubscriptionGrpcClient
 import com.xeno.subpilot.chat.exception.ChatHistoryException
 import com.xeno.subpilot.chat.exception.OpenAiException
 import com.xeno.subpilot.chat.grpc.ChatServiceGrpc
+import com.xeno.subpilot.chat.metrics.ChatMetrics
 import com.xeno.subpilot.chat.service.ChatHistoryService
 import com.xeno.subpilot.chat.service.ChatTurn
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import com.xeno.subpilot.proto.chat.v1.clearContextRequest
 import com.xeno.subpilot.proto.chat.v1.processMessageRequest
 import com.xeno.subpilot.proto.subscription.v1.CheckAccessResponse
@@ -56,6 +58,9 @@ class ChatServiceGrpcTest {
     @MockK
     lateinit var subscriptionGrpcClient: SubscriptionGrpcClient
 
+    private val meterRegistry = SimpleMeterRegistry()
+    private val metrics = ChatMetrics(meterRegistry)
+
     private lateinit var grpc: ChatServiceGrpc
 
     private val testChatId = 42L
@@ -69,6 +74,7 @@ class ChatServiceGrpcTest {
                 chatHistoryService,
                 subscriptionGrpcClient,
                 UnconfinedTestDispatcher(),
+                metrics,
             )
     }
 
@@ -252,5 +258,39 @@ class ChatServiceGrpcTest {
             }
 
             coVerify { subscriptionGrpcClient.refundAccess(testUserId, any(), any(), any()) }
+        }
+
+    @Test
+    fun `processMessage increments prompts_total when prompt reaches OpenAI`() =
+        runTest {
+            accessAllowed()
+            every { chatHistoryService.getHistory(any()) } returns emptyList()
+            coEvery { openAiChatClient.chat(any(), any(), any()) } returns "AI response"
+            justRun { chatHistoryService.append(any(), any(), any()) }
+
+            grpc.processMessage(processMessageRequest {
+                this.chatId = testChatId
+                this.userId = testUserId
+                this.text = "hello"
+            })
+
+            assertEquals(1.0, meterRegistry.counter("prompts_total").count())
+        }
+
+    @Test
+    fun `processMessage does not increment prompts_total when access is denied`() =
+        runTest {
+            coEvery { subscriptionGrpcClient.getModelPreference(any()) } returns "gpt-4o"
+            coEvery { subscriptionGrpcClient.checkAccess(any(), any()) } returns
+                CheckAccessResponse.newBuilder().setAllowed(false)
+                    .setDenialReason(DenialReason.QUOTA_EXHAUSTED).build()
+
+            grpc.processMessage(processMessageRequest {
+                this.chatId = testChatId
+                this.userId = testUserId
+                this.text = "hello"
+            })
+
+            assertEquals(0.0, meterRegistry.counter("prompts_total").count())
         }
 }

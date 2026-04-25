@@ -15,11 +15,13 @@
  */
 package com.xeno.subpilot.subscription.unittests.service
 
+import com.xeno.subpilot.subscription.metrics.SubscriptionMetrics
 import com.xeno.subpilot.subscription.properties.SubscriptionProperties
 import com.xeno.subpilot.subscription.repository.SubscriptionUserRepository
 import com.xeno.subpilot.subscription.repository.UserFreeQuotaRepository
 import com.xeno.subpilot.subscription.repository.UserModelPreferenceRepository
 import com.xeno.subpilot.subscription.service.UserService
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
@@ -31,6 +33,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 import java.time.Duration
 
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -57,6 +60,8 @@ class UserServiceTest {
             modelCosts = mapOf("gpt-4o" to 3, "gpt-4o-mini" to 1),
         )
 
+    private val meterRegistry = SimpleMeterRegistry()
+    private val metrics = SubscriptionMetrics(meterRegistry)
     private val userId = 42L
 
     @BeforeEach
@@ -67,6 +72,7 @@ class UserServiceTest {
                 freeQuotaRepository,
                 modelPreferenceRepository,
                 properties,
+                metrics,
             )
     }
 
@@ -92,5 +98,25 @@ class UserServiceTest {
         assertTrue(result)
         verify { freeQuotaRepository.createAll(userId, setOf("openai"), 10, any()) }
         verify { modelPreferenceRepository.upsert(userId, "gpt-4o-mini") }
+    }
+
+    @Test
+    fun `registerUser increments user_registrations_total for new user`() {
+        every { subscriptionUserRepository.insertIfAbsent(userId) } returns true
+        justRun { freeQuotaRepository.createAll(any(), any(), any(), any()) }
+        justRun { modelPreferenceRepository.upsert(any(), any()) }
+
+        service.registerUser(userId)
+
+        assertEquals(1.0, meterRegistry.counter("user_registrations_total").count())
+    }
+
+    @Test
+    fun `registerUser does not increment user_registrations_total for existing user`() {
+        every { subscriptionUserRepository.insertIfAbsent(userId) } returns false
+
+        service.registerUser(userId)
+
+        assertEquals(0.0, meterRegistry.counter("user_registrations_total").count())
     }
 }

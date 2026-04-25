@@ -17,6 +17,7 @@ package com.xeno.subpilot.chat.grpc
 
 import com.xeno.subpilot.chat.client.OpenAiChatClient
 import com.xeno.subpilot.chat.client.SubscriptionGrpcClient
+import com.xeno.subpilot.chat.metrics.ChatMetrics
 import com.xeno.subpilot.chat.service.ChatHistoryService
 import com.xeno.subpilot.proto.chat.v1.ChatServiceGrpcKt
 import com.xeno.subpilot.proto.chat.v1.ClearContextRequest
@@ -41,6 +42,7 @@ class ChatServiceGrpc(
     private val chatHistoryService: ChatHistoryService,
     private val subscriptionGrpcClient: SubscriptionGrpcClient,
     private val ioDispatcher: CoroutineContext,
+    private val metrics: ChatMetrics,
 ) : ChatServiceGrpcKt.ChatServiceCoroutineImplBase() {
 
     override suspend fun processMessage(request: ProcessMessageRequest): ProcessMessageResponse {
@@ -81,6 +83,7 @@ class ChatServiceGrpc(
                     chatHistoryService.getHistory(request.chatId)
                 }
 
+            metrics.promptsTotal.increment()
             val aiText = openAiChatClient.chat(history, request.text, model)
 
             withContext(ioDispatcher) {

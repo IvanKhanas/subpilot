@@ -13,18 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.xeno.subpilot.subscription.metrics
+package com.xeno.subpilot.chat.metrics
 
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Component
 
 @Component
-class SubscriptionMetrics(meterRegistry: MeterRegistry) {
+class ChatMetrics(meterRegistry: MeterRegistry) {
 
-    val subscriptionActivations: Counter =
-        Counter.builder("subscription_activations_total").register(meterRegistry)
-
-    val userRegistrations: Counter =
-        Counter.builder("user_registrations_total").register(meterRegistry)
+    val promptsTotal: Counter =
+        Counter.builder("prompts_total").register(meterRegistry)
 }
