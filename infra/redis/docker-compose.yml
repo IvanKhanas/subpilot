@@ -10,6 +10,8 @@ services:
       --appendonly no
     ports:
       - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - subpilot_internal
     deploy:
       resources:
         limits:
@@ -25,6 +27,8 @@ services:
     restart: no
     ports:
       - "5540:5540"
+    networks:
+      - subpilot_internal
     volumes:
       - redisinsight_data:/data
     depends_on:

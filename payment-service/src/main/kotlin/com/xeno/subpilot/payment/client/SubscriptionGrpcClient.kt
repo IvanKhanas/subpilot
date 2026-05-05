@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,11 +31,15 @@ private val logger = KotlinLogging.logger {}
 @Component
 class SubscriptionGrpcClient(
     private val stub: SubscriptionServiceGrpcKt.SubscriptionServiceCoroutineStub,
-) {
+    private val grpcRetry: GrpcRetry,
+) : SubscriptionClient {
 
-    suspend fun getPlanDetails(planId: String): PlanDetails {
+    override suspend fun getPlanDetails(planId: String): PlanDetails {
         try {
-            val response = stub.getPlanInfo(getPlanInfoRequest { this.planId = planId })
+            val response =
+                grpcRetry.retryOnUnavailable {
+                    stub.getPlanInfo(getPlanInfoRequest { this.planId = planId })
+                }
             return PlanDetails(
                 price = BigDecimal(response.plan.price),
                 currency = response.plan.currency,

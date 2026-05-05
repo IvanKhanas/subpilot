@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,15 +33,19 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.slot
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 
 import java.util.UUID
 
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 import kotlinx.coroutines.runBlocking
 
@@ -60,14 +64,22 @@ class BonusPurchaseServiceTest {
     @MockK
     lateinit var telegramClient: TelegramClient
 
+    private val faker = Faker()
+
     private lateinit var service: BonusPurchaseService
 
-    private val chatId = 100L
-    private val userId = 42L
+    private var chatId: Long = 0L
+    private var userId: Long = 0L
     private val planId = "openai-basic"
+    private var sentMessageId: Long = 0L
+    private var promptMessageId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        chatId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        sentMessageId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        promptMessageId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         service =
             BonusPurchaseService(
                 loyaltyClient,
@@ -75,31 +87,34 @@ class BonusPurchaseServiceTest {
                 planPurchaseService,
                 telegramClient,
             )
-        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns 1L
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns sentMessageId
         every { telegramClient.editMessage(any(), any(), any()) } returns Unit
         coJustRun { planPurchaseService.startPayment(any(), any(), any(), any()) }
     }
 
-    @Test
-    fun `startBonusPurchase falls back to normal payment when loyalty balance is unavailable`() {
-        coEvery { loyaltyClient.getBalance(userId) } throws
-            LoyaltyServiceException("boom", RuntimeException())
-        coEvery { subscriptionClient.getPlanInfo(planId) } returns plan(price = "199")
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(
+        "loyalty balance unavailable, true",
+        "plan unknown, false",
+    )
+    fun `startBonusPurchase falls back to normal payment for unsupported bonus flow`(
+        caseName: String,
+        loyaltyFails: Boolean,
+    ) {
+        assertTrue(caseName.isNotBlank())
+        if (loyaltyFails) {
+            coEvery { loyaltyClient.getBalance(userId) } throws
+                LoyaltyServiceException("boom", RuntimeException())
+            coEvery { subscriptionClient.getPlanInfo(planId) } returns plan(price = "199")
+        } else {
+            coEvery { loyaltyClient.getBalance(userId) } returns 50
+            coEvery { subscriptionClient.getPlanInfo(planId) } returns null
+        }
 
         runBlocking { service.startBonusPurchase(chatId, userId, planId) }
 
         coVerify { planPurchaseService.startPayment(chatId, userId, planId, 0) }
         verify(exactly = 0) { telegramClient.sendMessage(chatId, any(), any(), any()) }
-    }
-
-    @Test
-    fun `startBonusPurchase falls back to normal payment when plan is unknown`() {
-        coEvery { loyaltyClient.getBalance(userId) } returns 50
-        coEvery { subscriptionClient.getPlanInfo(planId) } returns null
-
-        runBlocking { service.startBonusPurchase(chatId, userId, planId) }
-
-        coVerify { planPurchaseService.startPayment(chatId, userId, planId, 0) }
     }
 
     @Test
@@ -153,12 +168,12 @@ class BonusPurchaseServiceTest {
                 userId = userId,
                 planId = planId,
                 idempotencyKey = idempotencyKey,
-                promptMessageId = 55L,
+                promptMessageId = promptMessageId,
                 promptText = "prompt",
             )
         }
 
-        verify { telegramClient.editMessage(chatId, 55L, "prompt") }
+        verify { telegramClient.editMessage(chatId, promptMessageId, "prompt") }
         verify {
             telegramClient.sendMessage(
                 chatId,
@@ -181,7 +196,14 @@ class BonusPurchaseServiceTest {
             SpendResult.Denied(SpendDenialReason.INSUFFICIENT_POINTS)
 
         runBlocking {
-            service.confirmBonusSpend(chatId, userId, planId, idempotencyKey, 10L, "prompt")
+            service.confirmBonusSpend(
+                chatId,
+                userId,
+                planId,
+                idempotencyKey,
+                promptMessageId,
+                "prompt",
+            )
         }
 
         coVerify { planPurchaseService.startPayment(chatId, userId, planId, 0) }
@@ -196,7 +218,14 @@ class BonusPurchaseServiceTest {
             LoyaltyServiceException("down", RuntimeException())
 
         runBlocking {
-            service.confirmBonusSpend(chatId, userId, planId, idempotencyKey, 10L, "prompt")
+            service.confirmBonusSpend(
+                chatId,
+                userId,
+                planId,
+                idempotencyKey,
+                promptMessageId,
+                "prompt",
+            )
         }
 
         verify {
@@ -212,28 +241,37 @@ class BonusPurchaseServiceTest {
         coVerify(exactly = 0) { planPurchaseService.startPayment(any(), any(), any(), any()) }
     }
 
-    @Test
-    fun `confirmBonusSpend starts payment with partial bonus when balance is lower than price`() {
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(
+        "partial bonus applied, true, 50",
+        "plan lookup fails, false, 0",
+    )
+    fun `confirmBonusSpend starts payment with expected bonus amount`(
+        caseName: String,
+        planExists: Boolean,
+        expectedBonusToApply: Long,
+    ) {
+        assertTrue(caseName.isNotBlank())
         coEvery { loyaltyClient.getBalance(userId) } returns 50
-        coEvery { subscriptionClient.getPlanInfo(planId) } returns plan(price = "199")
+        coEvery { subscriptionClient.getPlanInfo(planId) } returns
+            if (planExists) {
+                plan(price = "199")
+            } else {
+                null
+            }
 
         runBlocking {
-            service.confirmBonusSpend(chatId, userId, planId, UUID.randomUUID(), 10L, "prompt")
+            service.confirmBonusSpend(
+                chatId,
+                userId,
+                planId,
+                UUID.randomUUID(),
+                promptMessageId,
+                "prompt",
+            )
         }
 
-        coVerify { planPurchaseService.startPayment(chatId, userId, planId, 50) }
-    }
-
-    @Test
-    fun `confirmBonusSpend starts regular payment when plan lookup fails`() {
-        coEvery { loyaltyClient.getBalance(userId) } returns 50
-        coEvery { subscriptionClient.getPlanInfo(planId) } returns null
-
-        runBlocking {
-            service.confirmBonusSpend(chatId, userId, planId, UUID.randomUUID(), 10L, "prompt")
-        }
-
-        coVerify { planPurchaseService.startPayment(chatId, userId, planId, 0) }
+        coVerify { planPurchaseService.startPayment(chatId, userId, planId, expectedBonusToApply) }
     }
 
     @Test
@@ -243,12 +281,12 @@ class BonusPurchaseServiceTest {
                 chatId = chatId,
                 userId = userId,
                 planId = planId,
-                promptMessageId = 99L,
+                promptMessageId = promptMessageId,
                 promptText = "declined",
             )
         }
 
-        verify { telegramClient.editMessage(chatId, 99L, "declined") }
+        verify { telegramClient.editMessage(chatId, promptMessageId, "declined") }
         coVerify { planPurchaseService.startPayment(chatId, userId, planId, 0) }
     }
 

@@ -1,6 +1,7 @@
 plugins {
     java
     jacoco
+    id("subpilot.jacoco-conventions")
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
@@ -19,6 +20,7 @@ dependencies {
     testImplementation(platform(libs.testcontainers.bom))
 
     implementation(libs.bundles.spring.boot.base)
+    implementation(libs.bundles.observability)
     implementation(libs.spring.boot.starter.data.redis)
     implementation(libs.spring.grpc.starter)
     implementation(libs.grpc.kotlin.stub)

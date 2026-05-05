@@ -5,6 +5,7 @@ psql -v ON_ERROR_STOP=1 --username postgres <<-EOSQL
     SELECT 'CREATE DATABASE subscription' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'subscription')\gexec
     SELECT 'CREATE DATABASE payment' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'payment')\gexec
     SELECT 'CREATE DATABASE loyalty' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'loyalty')\gexec
+    SELECT 'CREATE DATABASE admin' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'admin')\gexec
 
     SELECT 'CREATE USER subscription WITH PASSWORD ''${SUBSCRIPTION_DB_PASSWORD}''' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'subscription')\gexec
     GRANT ALL PRIVILEGES ON DATABASE subscription TO subscription;
@@ -14,6 +15,9 @@ psql -v ON_ERROR_STOP=1 --username postgres <<-EOSQL
 
     SELECT 'CREATE USER loyalty WITH PASSWORD ''${LOYALTY_DB_PASSWORD}''' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'loyalty')\gexec
     GRANT ALL PRIVILEGES ON DATABASE loyalty TO loyalty;
+
+    SELECT 'CREATE USER admin WITH PASSWORD ''${ADMIN_DB_PASSWORD}''' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'admin')\gexec
+    GRANT ALL PRIVILEGES ON DATABASE admin TO admin;
 EOSQL
 
 psql -v ON_ERROR_STOP=1 --username postgres --dbname subscription <<-EOSQL
@@ -26,4 +30,8 @@ EOSQL
 
 psql -v ON_ERROR_STOP=1 --username postgres --dbname loyalty <<-EOSQL
     GRANT ALL ON SCHEMA public TO loyalty;
+EOSQL
+
+psql -v ON_ERROR_STOP=1 --username postgres --dbname admin <<-EOSQL
+    GRANT ALL ON SCHEMA public TO admin;
 EOSQL

@@ -13,6 +13,8 @@ spring:
       channels:
         subscription-service:
           address: ${SUBSCRIPTION_GRPC_ADDRESS:localhost:9091}
+        tg-bot-service:
+          address: ${TG_BOT_GRPC_ADDRESS:localhost:9081}
 
 openai:
   api-key: ${OPENAI_API_KEY}
@@ -31,3 +33,15 @@ grpc:
 
 server:
   port: ${CHAT_SERVER_PORT:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        "[http.server.requests]": true

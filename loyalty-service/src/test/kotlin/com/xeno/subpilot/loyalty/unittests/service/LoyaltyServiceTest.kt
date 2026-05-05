@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,13 @@
  */
 package com.xeno.subpilot.loyalty.unittests.service
 
-import com.xeno.subpilot.loyalty.client.SubscriptionGrpcClient
+import com.xeno.subpilot.loyalty.client.SubscriptionClient
 import com.xeno.subpilot.loyalty.dto.SpendDenialReason
 import com.xeno.subpilot.loyalty.dto.SpendResult
 import com.xeno.subpilot.loyalty.dto.kafka.PaymentSucceededEvent
 import com.xeno.subpilot.loyalty.properties.LoyaltyProperties
-import com.xeno.subpilot.loyalty.repository.LoyaltyTransactionJpaRepository
-import com.xeno.subpilot.loyalty.repository.UserLoyaltyBalanceJpaRepository
+import com.xeno.subpilot.loyalty.repository.LoyaltyTransactionRepository
+import com.xeno.subpilot.loyalty.repository.UserLoyaltyBalanceRepository
 import com.xeno.subpilot.loyalty.service.LoyaltyService
 import com.xeno.subpilot.proto.subscription.v1.planInfo
 import io.mockk.every
@@ -49,13 +49,13 @@ import kotlin.test.assertIs
 class LoyaltyServiceTest {
 
     @MockK
-    lateinit var loyaltyTransactionJpaRepository: LoyaltyTransactionJpaRepository
+    lateinit var loyaltyTransactionJpaRepository: LoyaltyTransactionRepository
 
     @MockK
-    lateinit var userLoyaltyBalanceJpaRepository: UserLoyaltyBalanceJpaRepository
+    lateinit var userLoyaltyBalanceJpaRepository: UserLoyaltyBalanceRepository
 
     @MockK
-    lateinit var subscriptionGrpcClient: SubscriptionGrpcClient
+    lateinit var subscriptionGrpcClient: SubscriptionClient
 
     private val fixedClock: Clock =
         Clock.fixed(

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,11 @@
  */
 package com.xeno.subpilot.payment.exception
 
+import io.grpc.Status
+
 class InvalidPlanException(
-    message: String,
-) : RuntimeException(message)
+    planId: String,
+) : PaymentException(
+        status = Status.NOT_FOUND,
+        message = planId,
+    )

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import com.xeno.subpilot.tgbot.dto.BalanceInfo
 import com.xeno.subpilot.tgbot.dto.ModelPreferenceResult
 import com.xeno.subpilot.tgbot.dto.PlanInfo
 import com.xeno.subpilot.tgbot.dto.RegistrationResult
+import com.xeno.subpilot.tgbot.dto.UserInfoResult
 
 interface SubscriptionClient {
     suspend fun registerUser(userId: Long): RegistrationResult?
@@ -33,4 +34,10 @@ interface SubscriptionClient {
     suspend fun getPlanInfo(planId: String): PlanInfo?
 
     suspend fun getBalance(userId: Long): BalanceInfo
+
+    suspend fun getUserInfo(userId: Long): UserInfoResult?
+
+    suspend fun blockUser(userId: Long)
+
+    suspend fun unblockUser(userId: Long)
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,9 @@ import com.xeno.subpilot.payment.dto.kafka.YooKassaWebhookEvent
 import com.xeno.subpilot.payment.entity.OutboxPaymentEvent
 import com.xeno.subpilot.payment.entity.Payment
 import com.xeno.subpilot.payment.entity.PaymentStatus
-import com.xeno.subpilot.payment.repository.OutboxPaymentEventJpaRepository
-import com.xeno.subpilot.payment.repository.PaymentJpaRepository
+import com.xeno.subpilot.payment.metrics.PaymentMetrics
+import com.xeno.subpilot.payment.repository.OutboxPaymentEventRepository
+import com.xeno.subpilot.payment.repository.PaymentRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import tools.jackson.databind.ObjectMapper
@@ -34,11 +35,12 @@ import java.time.LocalDateTime
 
 @Service
 class YooKassaPaymentService(
-    private val paymentJpaRepository: PaymentJpaRepository,
+    private val paymentJpaRepository: PaymentRepository,
     private val yooKassaClient: YooKassaClient,
-    private val outboxPaymentEventJpaRepository: OutboxPaymentEventJpaRepository,
+    private val outboxPaymentEventJpaRepository: OutboxPaymentEventRepository,
     private val objectMapper: ObjectMapper,
     private val clock: Clock,
+    private val metrics: PaymentMetrics,
 ) {
 
     @Transactional
@@ -80,6 +82,8 @@ class YooKassaPaymentService(
         val updated = paymentJpaRepository.updateStatusIfPending(payment.id!!, newStatus, now)
 
         if (updated == 0) return
+
+        metrics.paymentsSucceeded.increment()
 
         outboxPaymentEventJpaRepository.save(
             OutboxPaymentEvent(

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,51 +15,31 @@
  */
 package com.xeno.subpilot.tgbot.unittests.ux.buttons
 
+import com.xeno.subpilot.tgbot.dto.KeyboardButton
 import com.xeno.subpilot.tgbot.ux.AiProvider
 import com.xeno.subpilot.tgbot.ux.buttons.BotButtons
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.Arguments.arguments
+import org.junit.jupiter.params.provider.MethodSource
+
+import java.util.stream.Stream
 
 class BotButtonsTest {
 
-    @Test
-    fun `main menu has start chat button in first row`() {
+    @ParameterizedTest(name = "mainMenu[{0}][{1}] = {2}")
+    @MethodSource("mainMenuButtonCases")
+    fun `main menu keeps expected button positions`(
+        rowIndex: Int,
+        columnIndex: Int,
+        expectedButtonText: String,
+    ) {
         val keyboard = BotButtons.mainMenu.keyboard
 
-        assertEquals(BotButtons.BTN_START_CHAT, keyboard[0][0].text)
-    }
-
-    @Test
-    fun `main menu has choose model and clear context in second row`() {
-        val keyboard = BotButtons.mainMenu.keyboard
-
-        assertEquals(BotButtons.BTN_CHOOSE_MODEL, keyboard[1][0].text)
-        assertEquals(BotButtons.CLEAR_CONTEXT, keyboard[1][1].text)
-    }
-
-    @Test
-    fun `main menu has premium and balance in third row`() {
-        val keyboard = BotButtons.mainMenu.keyboard
-
-        assertEquals(BotButtons.PREMIUM, keyboard[2][0].text)
-        assertEquals(BotButtons.BALANCE, keyboard[2][1].text)
-    }
-
-    @Test
-    fun `main menu has bonus and help in fourth row`() {
-        val keyboard = BotButtons.mainMenu.keyboard
-
-        assertEquals(BotButtons.BONUS, keyboard[3][0].text)
-        assertEquals(BotButtons.BTN_HELP, keyboard[3][1].text)
-    }
-
-    @Test
-    fun `main menu has support alone in fifth row`() {
-        val keyboard = BotButtons.mainMenu.keyboard
-
-        assertEquals(BotButtons.SUPPORT, keyboard[4][0].text)
-        assertEquals(1, keyboard[4].size)
+        assertEquals(expectedButtonText, keyboard[rowIndex][columnIndex].text)
     }
 
     @Test
@@ -83,14 +63,6 @@ class BotButtonsTest {
     }
 
     @Test
-    fun `provider menu has back and main menu buttons in last row`() {
-        val navRow = BotButtons.providerMenu.keyboard.last()
-
-        assertEquals(BotButtons.BTN_BACK, navRow[0].text)
-        assertEquals(BotButtons.BTN_MAIN_MENU, navRow[1].text)
-    }
-
-    @Test
     fun `model menu contains all models for given provider`() {
         val provider = AiProvider.OPENAI
         val modelRow = BotButtons.modelMenu(provider).keyboard[0]
@@ -101,11 +73,36 @@ class BotButtonsTest {
         }
     }
 
-    @Test
-    fun `model menu has back and main menu buttons in last row`() {
-        val navRow = BotButtons.modelMenu(AiProvider.OPENAI).keyboard.last()
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("navigationRowCases")
+    fun `menus keep back and main menu buttons in last row`(
+        caseName: String,
+        navRow: List<KeyboardButton>,
+    ) {
+        assertEquals(BotButtons.BTN_BACK, navRow.first().text, "Case: $caseName")
+        assertEquals(BotButtons.BTN_MAIN_MENU, navRow.last().text, "Case: $caseName")
+    }
 
-        assertEquals(BotButtons.BTN_BACK, navRow[0].text)
-        assertEquals(BotButtons.BTN_MAIN_MENU, navRow[1].text)
+    companion object {
+
+        @JvmStatic
+        fun mainMenuButtonCases(): Stream<Arguments> =
+            Stream.of(
+                arguments(0, 0, BotButtons.BTN_START_CHAT),
+                arguments(1, 0, BotButtons.BTN_CHOOSE_MODEL),
+                arguments(1, 1, BotButtons.CLEAR_CONTEXT),
+                arguments(2, 0, BotButtons.PREMIUM),
+                arguments(2, 1, BotButtons.BALANCE),
+                arguments(3, 0, BotButtons.BONUS),
+                arguments(3, 1, BotButtons.BTN_HELP),
+                arguments(4, 0, BotButtons.SUPPORT),
+            )
+
+        @JvmStatic
+        fun navigationRowCases(): Stream<Arguments> =
+            Stream.of(
+                arguments("provider menu", BotButtons.providerMenu.keyboard.last()),
+                arguments("model menu", BotButtons.modelMenu(AiProvider.OPENAI).keyboard.last()),
+            )
     }
 }

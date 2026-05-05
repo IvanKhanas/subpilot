@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,9 +32,9 @@ import kotlinx.coroutines.runBlocking
 class SubscriptionGrpcClient(
     private val stub: SubscriptionServiceGrpcKt.SubscriptionServiceCoroutineStub,
     private val grpcRetry: GrpcRetry,
-) {
+) : SubscriptionClient {
 
-    fun getPlanInfo(planId: String): PlanInfo? =
+    override fun getPlanInfo(planId: String): PlanInfo? =
         try {
             runBlocking {
                 stub.getPlanInfo(getPlanInfoRequest { this.planId = planId }).plan
@@ -50,7 +50,7 @@ class SubscriptionGrpcClient(
             }
         }
 
-    fun activateSubscription(
+    override fun activateSubscription(
         userId: Long,
         planId: String,
         idempotencyKey: UUID,

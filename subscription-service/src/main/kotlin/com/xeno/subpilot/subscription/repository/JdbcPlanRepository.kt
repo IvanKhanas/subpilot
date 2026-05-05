@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import com.xeno.subpilot.subscription.properties.PlanProperties
 import com.xeno.subpilot.subscription.properties.ProviderAllocation
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
 
 import java.math.BigDecimal
 import java.sql.ResultSet
@@ -81,6 +82,29 @@ class JdbcPlanRepository(
         val allocProvider: String,
         val requests: Int,
     )
+
+    @Transactional
+    override fun create(
+        planId: String,
+        plan: PlanProperties,
+    ) {
+        jdbcTemplate.update(
+            "INSERT INTO subscription_plan (plan_id, provider, display_name, price, currency) VALUES (?, ?, ?, ?, ?)",
+            planId,
+            plan.provider,
+            plan.displayName,
+            plan.price,
+            plan.currency,
+        )
+        plan.allocations.forEach { alloc ->
+            jdbcTemplate.update(
+                "INSERT INTO subscription_plan_allocation (plan_id, provider, requests) VALUES (?, ?, ?)",
+                planId,
+                alloc.provider,
+                alloc.requests,
+            )
+        }
+    }
 
     private companion object {
         const val PLAN_WITH_ALLOCATIONS_SQL =

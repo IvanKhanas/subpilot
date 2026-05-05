@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,18 @@
  */
 package com.xeno.subpilot.tgbot.unittests.client
 
+import com.xeno.subpilot.proto.subscription.v1.BlockUserResponse
 import com.xeno.subpilot.proto.subscription.v1.GetBalanceResponse
 import com.xeno.subpilot.proto.subscription.v1.GetPlanInfoResponse
 import com.xeno.subpilot.proto.subscription.v1.GetPlansResponse
+import com.xeno.subpilot.proto.subscription.v1.GetUserInfoResponse
 import com.xeno.subpilot.proto.subscription.v1.PlanAllocation
 import com.xeno.subpilot.proto.subscription.v1.PlanInfo
 import com.xeno.subpilot.proto.subscription.v1.ProviderBalance
 import com.xeno.subpilot.proto.subscription.v1.RegisterUserResponse
 import com.xeno.subpilot.proto.subscription.v1.SetModelPreferenceResponse
 import com.xeno.subpilot.proto.subscription.v1.SubscriptionServiceGrpcKt
+import com.xeno.subpilot.proto.subscription.v1.UnblockUserResponse
 import com.xeno.subpilot.tgbot.client.GrpcRetry
 import com.xeno.subpilot.tgbot.client.SubscriptionGrpcClient
 import com.xeno.subpilot.tgbot.config.GrpcRetryProperties
@@ -33,10 +36,13 @@ import io.grpc.StatusException
 import io.mockk.coEvery
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -50,10 +56,16 @@ class SubscriptionGrpcClientTest {
     @MockK(relaxed = true)
     lateinit var stub: SubscriptionServiceGrpcKt.SubscriptionServiceCoroutineStub
 
+    private val faker = Faker()
+
     private lateinit var client: SubscriptionGrpcClient
+    private var userId: Long = 0L
+    private val modelId = "gpt-4o"
+    private val planId = "openai-basic"
 
     @BeforeEach
     fun setUp() {
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         client =
             SubscriptionGrpcClient(
                 stub,
@@ -77,7 +89,7 @@ class SubscriptionGrpcClientTest {
                 .setFreeModelId("gpt-4o-mini")
                 .build()
 
-        val result = runBlocking { client.registerUser(1L) }
+        val result = runBlocking { client.registerUser(userId) }
 
         assertTrue(result!!.isNew)
         assertEquals(10, result.freeQuota)
@@ -87,7 +99,7 @@ class SubscriptionGrpcClientTest {
     fun `registerUser returns null on StatusException`() {
         coEvery { stub.registerUser(any(), any()) } throws StatusException(Status.UNAVAILABLE)
 
-        val result = runBlocking { client.registerUser(1L) }
+        val result = runBlocking { client.registerUser(userId) }
 
         assertNull(result)
     }
@@ -103,18 +115,9 @@ class SubscriptionGrpcClientTest {
                 .setProvider("openai")
                 .build()
 
-        val result = runBlocking { client.setModelPreference(1L, "gpt-4o") }
+        val result = runBlocking { client.setModelPreference(userId, modelId) }
 
         assertTrue(result.providerChanged)
-    }
-
-    @Test
-    fun `setModelPreference throws SubscriptionServiceException on StatusException`() {
-        coEvery { stub.setModelPreference(any(), any()) } throws StatusException(Status.UNAVAILABLE)
-
-        assertThrows<SubscriptionServiceException> {
-            runBlocking { client.setModelPreference(1L, "gpt-4o") }
-        }
     }
 
     @Test
@@ -128,7 +131,7 @@ class SubscriptionGrpcClientTest {
                 .build()
 
         assertThrows<IllegalStateException> {
-            runBlocking { client.registerUser(1L) }
+            runBlocking { client.registerUser(userId) }
         }
     }
 
@@ -163,15 +166,6 @@ class SubscriptionGrpcClientTest {
     }
 
     @Test
-    fun `getPlans throws SubscriptionServiceException on gRPC failure`() {
-        coEvery { stub.getPlans(any(), any()) } throws StatusException(Status.UNAVAILABLE)
-
-        assertThrows<SubscriptionServiceException> {
-            runBlocking { client.getPlans() }
-        }
-    }
-
-    @Test
     fun `getPlanInfo returns mapped dto when plan exists`() {
         val plan =
             PlanInfo
@@ -191,7 +185,7 @@ class SubscriptionGrpcClientTest {
         coEvery { stub.getPlanInfo(any(), any()) } returns
             GetPlanInfoResponse.newBuilder().setPlan(plan).build()
 
-        val result = runBlocking { client.getPlanInfo("openai-basic") }
+        val result = runBlocking { client.getPlanInfo(planId) }
 
         assertEquals("openai-basic", result?.planId)
         assertEquals("Basic", result?.displayName)
@@ -212,7 +206,7 @@ class SubscriptionGrpcClientTest {
         coEvery { stub.getPlanInfo(any(), any()) } throws StatusException(Status.UNAVAILABLE)
 
         assertThrows<SubscriptionServiceException> {
-            runBlocking { client.getPlanInfo("openai-basic") }
+            runBlocking { client.getPlanInfo(planId) }
         }
     }
 
@@ -236,7 +230,7 @@ class SubscriptionGrpcClientTest {
                         .build(),
                 ).build()
 
-        val result = runBlocking { client.getBalance(1L) }
+        val result = runBlocking { client.getBalance(userId) }
 
         assertEquals(1, result.freeBalances.size)
         assertEquals("openai", result.freeBalances[0].provider)
@@ -249,11 +243,117 @@ class SubscriptionGrpcClientTest {
     }
 
     @Test
-    fun `getBalance throws SubscriptionServiceException on gRPC failure`() {
-        coEvery { stub.getBalance(any(), any()) } throws StatusException(Status.UNAVAILABLE)
+    fun `getUserInfo maps response when user exists`() {
+        coEvery { stub.getUserInfo(any(), any()) } returns
+            GetUserInfoResponse
+                .newBuilder()
+                .setFound(true)
+                .setBlocked(true)
+                .setRole("ADMIN")
+                .setRegisteredAtEpoch(1_700_000_000L)
+                .build()
+
+        val result = runBlocking { client.getUserInfo(userId) }
+
+        assertEquals(true, result?.blocked)
+        assertEquals("ADMIN", result?.role)
+        assertEquals(1_700_000_000L, result?.registeredAtEpoch)
+    }
+
+    @Test
+    fun `getUserInfo returns null when response found flag is false`() {
+        coEvery { stub.getUserInfo(any(), any()) } returns
+            GetUserInfoResponse
+                .newBuilder()
+                .setFound(false)
+                .build()
+
+        val result = runBlocking { client.getUserInfo(userId) }
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `getUserInfo returns null on gRPC failure`() {
+        coEvery { stub.getUserInfo(any(), any()) } throws StatusException(Status.UNAVAILABLE)
+
+        val result = runBlocking { client.getUserInfo(userId) }
+
+        assertNull(result)
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(ToggleOperation::class)
+    fun `block and unblock complete when gRPC call succeeds`(operation: ToggleOperation) {
+        when (operation) {
+            ToggleOperation.BLOCK -> {
+                coEvery { stub.blockUser(any(), any()) } returns
+                    BlockUserResponse.getDefaultInstance()
+            }
+            ToggleOperation.UNBLOCK -> {
+                coEvery { stub.unblockUser(any(), any()) } returns
+                    UnblockUserResponse.getDefaultInstance()
+            }
+        }
+
+        runBlocking {
+            when (operation) {
+                ToggleOperation.BLOCK -> client.blockUser(userId)
+                ToggleOperation.UNBLOCK -> client.unblockUser(userId)
+            }
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(FailingOperation::class)
+    fun `throws SubscriptionServiceException for failing gRPC calls`(operation: FailingOperation) {
+        when (operation) {
+            FailingOperation.SET_MODEL_PREFERENCE -> {
+                coEvery { stub.setModelPreference(any(), any()) } throws
+                    StatusException(Status.UNAVAILABLE)
+            }
+            FailingOperation.GET_PLANS -> {
+                coEvery { stub.getPlans(any(), any()) } throws StatusException(Status.UNAVAILABLE)
+            }
+            FailingOperation.GET_BALANCE -> {
+                coEvery { stub.getBalance(any(), any()) } throws StatusException(Status.UNAVAILABLE)
+            }
+            FailingOperation.BLOCK_USER -> {
+                coEvery { stub.blockUser(any(), any()) } throws StatusException(Status.UNAVAILABLE)
+            }
+            FailingOperation.UNBLOCK_USER -> {
+                coEvery { stub.unblockUser(any(), any()) } throws
+                    StatusException(Status.UNAVAILABLE)
+            }
+        }
 
         assertThrows<SubscriptionServiceException> {
-            runBlocking { client.getBalance(1L) }
+            runBlocking {
+                when (operation) {
+                    FailingOperation.SET_MODEL_PREFERENCE ->
+                        client.setModelPreference(
+                            userId,
+                            modelId,
+                        )
+                    FailingOperation.GET_PLANS -> client.getPlans()
+                    FailingOperation.GET_BALANCE -> client.getBalance(userId)
+                    FailingOperation.BLOCK_USER -> client.blockUser(userId)
+                    FailingOperation.UNBLOCK_USER -> client.unblockUser(userId)
+                }
+            }
         }
+    }
+
+    enum class ToggleOperation {
+        BLOCK,
+        UNBLOCK,
+    }
+
+    enum class FailingOperation {
+        SET_MODEL_PREFERENCE,
+        GET_PLANS,
+        GET_BALANCE,
+        BLOCK_USER,
+        UNBLOCK_USER,
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,22 +15,28 @@
  */
 package com.xeno.subpilot.subscription.unittests.service
 
+import com.xeno.subpilot.subscription.metrics.SubscriptionMetrics
 import com.xeno.subpilot.subscription.properties.SubscriptionProperties
 import com.xeno.subpilot.subscription.repository.SubscriptionUserRepository
 import com.xeno.subpilot.subscription.repository.UserFreeQuotaRepository
 import com.xeno.subpilot.subscription.repository.UserModelPreferenceRepository
 import com.xeno.subpilot.subscription.service.UserService
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.justRun
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 
 import java.time.Duration
 
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -48,6 +54,8 @@ class UserServiceTest {
 
     private lateinit var service: UserService
 
+    private val faker = Faker()
+
     private val properties =
         SubscriptionProperties(
             freeQuota = 10,
@@ -57,16 +65,20 @@ class UserServiceTest {
             modelCosts = mapOf("gpt-4o" to 3, "gpt-4o-mini" to 1),
         )
 
-    private val userId = 42L
+    private val meterRegistry = SimpleMeterRegistry()
+    private val metrics = SubscriptionMetrics(meterRegistry)
+    private var userId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         service =
             UserService(
                 subscriptionUserRepository,
                 freeQuotaRepository,
                 modelPreferenceRepository,
                 properties,
+                metrics,
             )
     }
 
@@ -92,5 +104,28 @@ class UserServiceTest {
         assertTrue(result)
         verify { freeQuotaRepository.createAll(userId, setOf("openai"), 10, any()) }
         verify { modelPreferenceRepository.upsert(userId, "gpt-4o-mini") }
+    }
+
+    @ParameterizedTest(name = "isNew={0} -> registrations_total={1}")
+    @CsvSource(
+        "true, 1.0",
+        "false, 0.0",
+    )
+    fun `registerUser updates user_registrations_total depending on user existence`(
+        isNew: Boolean,
+        expectedCounterValue: Double,
+    ) {
+        every { subscriptionUserRepository.insertIfAbsent(userId) } returns isNew
+        if (isNew) {
+            justRun { freeQuotaRepository.createAll(any(), any(), any(), any()) }
+            justRun { modelPreferenceRepository.upsert(any(), any()) }
+        }
+
+        service.registerUser(userId)
+
+        assertEquals(
+            expectedCounterValue,
+            meterRegistry.counter("user_registrations_total").count(),
+        )
     }
 }

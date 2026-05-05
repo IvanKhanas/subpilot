@@ -49,6 +49,7 @@ grpc-stub = { group = "io.grpc", name = "grpc-stub", version.ref = "grpc" }
 protobuf-kotlin = { group = "com.google.protobuf", name = "protobuf-kotlin", version.ref = "protobuf" }
 openai = { group = "com.openai", name = "openai-java", version.ref = "openai" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-reactor = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-reactor", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 javax-annotation-api = { group = "javax.annotation", name = "javax.annotation-api", version.ref = "javax-annotation" }
 commonmark = { group = "org.commonmark", name = "commonmark", version.ref = "commonmark" }
@@ -60,11 +61,16 @@ testcontainers-postgresql = { group = "org.testcontainers", name = "postgresql" 
 testcontainers-kafka = { group = "org.testcontainers", name = "kafka" }
 spring-kafka = { group = "org.springframework.kafka", name = "spring-kafka" }
 spring-boot-starter-security = { group = "org.springframework.boot", name = "spring-boot-starter-security" }
+spring-boot-starter-oauth2-resource-server = { group = "org.springframework.boot", name = "spring-boot-starter-oauth2-resource-server" }
+spring-boot-starter-validation = { group = "org.springframework.boot", name = "spring-boot-starter-validation" }
+spring-boot-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator" }
+micrometer-registry-prometheus = { group = "io.micrometer", name = "micrometer-registry-prometheus" }
 springmockk = { group = "com.ninja-squad", name = "springmockk", version.ref = "springmockk" }
 
 [bundles]
 spring-boot-base = ["spring-boot-starter-web", "kotlin-reflect"]
 spring-boot-test = ["spring-boot-starter-test", "kotlin-test-junit5"]
+observability = ["spring-boot-starter-actuator", "micrometer-registry-prometheus"]
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

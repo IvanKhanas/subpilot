@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,18 +21,26 @@ import com.xeno.subpilot.tgbot.ux.NavigationService
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import io.mockk.justRun
+import io.mockk.mockk
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNull
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 import org.springframework.data.redis.core.ListOperations
+import org.springframework.data.redis.core.RedisOperations
+import org.springframework.data.redis.core.SessionCallback
 import org.springframework.data.redis.core.StringRedisTemplate
 
 import java.time.Duration
+import java.util.stream.Stream
 
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @ExtendWith(MockKExtension::class)
 class NavigationServiceTest {
@@ -46,57 +54,78 @@ class NavigationServiceTest {
     @MockK
     private lateinit var navigationProperties: NavigationProperties
 
+    private val faker = Faker()
+
     private lateinit var service: NavigationService
+    private var chatId: Long = 0L
+    private lateinit var stackKey: String
 
     @BeforeEach
     fun setUp() {
+        chatId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        stackKey = "nav:stack:$chatId"
         every { redis.opsForList() } returns listOperations
         every { navigationProperties.stackTtl } returns Duration.ofMinutes(20)
         service = NavigationService(redis, navigationProperties)
     }
 
+    @Test
     fun `push stores screen name in Redis`() {
+        val redisOperations = mockk<RedisOperations<String, String>>(relaxed = true)
+        every { redisOperations.opsForList() } returns listOperations
         every { listOperations.rightPush(any(), any<String>()) } returns 1L
-        justRun { redis.expire(any(), any<Duration>()) }
+        every { redis.executePipelined(any<SessionCallback<Any?>>()) } answers
+            {
+                val callback = firstArg<SessionCallback<Any?>>()
+                @Suppress("UNCHECKED_CAST")
+                callback.execute(redisOperations as RedisOperations<Any, Any>)
+                emptyList<Any?>()
+            }
 
-        service.push(42L, BotScreen.MAIN_MENU)
+        service.push(chatId, BotScreen.MAIN_MENU)
 
-        verify { redis.expire("nav:stack:42", Duration.ofMinutes(30)) }
+        verify { listOperations.rightPush(stackKey, BotScreen.MAIN_MENU.name) }
+        verify { redisOperations.expire(stackKey, Duration.ofMinutes(20)) }
     }
 
     @Test
     fun `pop returns screen matching Redis value`() {
-        every { listOperations.rightPop("nav:stack:42") } returns "PROVIDER_MENU"
+        every { listOperations.rightPop(stackKey) } returns "PROVIDER_MENU"
 
-        val result = service.pop(42L)
+        val result = service.pop(chatId)
 
         assertEquals(BotScreen.PROVIDER_MENU, result)
     }
 
-    @Test
-    fun `pop returns null when Redis returns null`() {
-        every { listOperations.rightPop("nav:stack:42") } returns null
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("emptyPopCases")
+    fun `pop returns null for invalid Redis value`(
+        caseName: String,
+        redisValue: String?,
+    ) {
+        assertTrue(caseName.isNotBlank())
+        every { listOperations.rightPop(stackKey) } returns redisValue
 
-        val result = service.pop(42L)
-
-        assertNull(result)
-    }
-
-    @Test
-    fun `pop returns null for unknown screen name`() {
-        every { listOperations.rightPop("nav:stack:42") } returns "UNKNOWN_SCREEN"
-
-        val result = service.pop(42L)
+        val result = service.pop(chatId)
 
         assertNull(result)
     }
 
     @Test
     fun `clear deletes Redis key`() {
-        every { redis.delete("nav:stack:42") } returns true
+        every { redis.delete(stackKey) } returns true
 
-        service.clear(42L)
+        service.clear(chatId)
 
-        verify { redis.delete("nav:stack:42") }
+        verify { redis.delete(stackKey) }
+    }
+
+    companion object {
+        @JvmStatic
+        fun emptyPopCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of("redis returns null", null),
+                Arguments.of("redis returns unknown screen", "UNKNOWN_SCREEN"),
+            )
     }
 }

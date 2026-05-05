@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,11 +24,16 @@ import io.mockk.coJustRun
 import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
+
+import java.util.stream.Stream
+
+import kotlin.test.assertEquals
 
 import kotlinx.coroutines.test.runTest
 
@@ -46,19 +51,13 @@ class ChatTextButtonHandlerTest {
         coJustRun { startCommandHandler.registerAndGreet(any()) }
     }
 
-    @Test
-    fun `supports returns true for BTN_START_CHAT text`() {
-        assertTrue(handler.supports(BotButtons.BTN_START_CHAT))
-    }
-
-    @Test
-    fun `supports returns false for arbitrary text`() {
-        assertFalse(handler.supports("random text"))
-    }
-
-    @Test
-    fun `supports returns false for empty string`() {
-        assertFalse(handler.supports(""))
+    @ParameterizedTest(name = "supports(''{0}'')={1}")
+    @MethodSource("supportsCases")
+    fun `supports handles chat button text`(
+        text: String,
+        expected: Boolean,
+    ) {
+        assertEquals(expected, handler.supports(text))
     }
 
     @Test
@@ -70,4 +69,14 @@ class ChatTextButtonHandlerTest {
 
             coVerify { startCommandHandler.registerAndGreet(message) }
         }
+
+    companion object {
+        @JvmStatic
+        fun supportsCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of(BotButtons.BTN_START_CHAT, true),
+                Arguments.of("random text", false),
+                Arguments.of("", false),
+            )
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 package com.xeno.subpilot.loyalty.testcontainers
 
 import com.ninjasquad.springmockk.MockkBean
-import com.xeno.subpilot.loyalty.client.SubscriptionGrpcClient
+import com.xeno.subpilot.loyalty.client.SubscriptionClient
 import com.xeno.subpilot.loyalty.dto.SpendDenialReason
 import com.xeno.subpilot.loyalty.dto.SpendResult
 import com.xeno.subpilot.loyalty.dto.kafka.PaymentSucceededEvent
@@ -51,7 +51,7 @@ import kotlin.test.assertIs
 class LoyaltyServiceContainerTest {
 
     @MockkBean
-    lateinit var subscriptionGrpcClient: SubscriptionGrpcClient
+    lateinit var subscriptionGrpcClient: SubscriptionClient
 
     @Autowired
     lateinit var loyaltyService: LoyaltyService

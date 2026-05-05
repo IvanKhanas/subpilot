@@ -7,6 +7,8 @@ services:
       - "29092:29092"
     volumes:
       - kafka1_data:/var/lib/kafka/data
+    networks:
+      - subpilot_internal
     environment:
       CLUSTER_ID: MkU3OThGNTcwNTJENDM2Qg
       KAFKA_NODE_ID: 1
@@ -39,6 +41,8 @@ services:
       - "29093:29092"
     volumes:
       - kafka2_data:/var/lib/kafka/data
+    networks:
+      - subpilot_internal
     environment:
       CLUSTER_ID: MkU3OThGNTcwNTJENDM2Qg
       KAFKA_NODE_ID: 2
@@ -71,6 +75,8 @@ services:
       - "29094:29092"
     volumes:
       - kafka3_data:/var/lib/kafka/data
+    networks:
+      - subpilot_internal
     environment:
       CLUSTER_ID: MkU3OThGNTcwNTJENDM2Qg
       KAFKA_NODE_ID: 3
@@ -100,6 +106,8 @@ services:
     restart: no
     ports:
       - "8090:8080"
+    networks:
+      - subpilot_internal
     environment:
       KAFKA_CLUSTERS_0_NAME: subpilot
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092,kafka2:9092,kafka3:9092

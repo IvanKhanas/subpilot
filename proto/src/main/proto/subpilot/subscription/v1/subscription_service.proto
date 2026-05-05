@@ -15,6 +15,10 @@ service SubscriptionService {
   rpc GetPlanInfo(GetPlanInfoRequest) returns (GetPlanInfoResponse);
   rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
   rpc ActivateSubscription(ActivateSubscriptionRequest) returns (ActivateSubscriptionResponse);
+  rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
+  rpc BlockUser(BlockUserRequest) returns (BlockUserResponse);
+  rpc UnblockUser(UnblockUserRequest) returns (UnblockUserResponse);
+  rpc CreatePlan(CreatePlanRequest) returns (CreatePlanResponse);
 }
 
 message CheckAccessRequest {
@@ -126,3 +130,37 @@ message ActivateSubscriptionRequest {
 }
 
 message ActivateSubscriptionResponse {}
+
+message GetUserInfoRequest {
+  int64 user_id = 1;
+}
+
+message GetUserInfoResponse {
+  bool found = 1;
+  bool blocked = 2;
+  string role = 3;
+  int64 registered_at_epoch = 4;
+}
+
+message BlockUserRequest {
+  int64 user_id = 1;
+}
+
+message BlockUserResponse {}
+
+message UnblockUserRequest {
+  int64 user_id = 1;
+}
+
+message UnblockUserResponse {}
+
+message CreatePlanRequest {
+  string plan_id = 1;
+  string provider = 2;
+  string display_name = 3;
+  string price = 4;
+  string currency = 5;
+  repeated PlanAllocation allocations = 6;
+}
+
+message CreatePlanResponse {}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ package com.xeno.subpilot.payment.unittests.service
 
 import com.xeno.subpilot.payment.entity.OutboxPaymentEvent
 import com.xeno.subpilot.payment.properties.YooKassaPaymentOutboxProperties
-import com.xeno.subpilot.payment.repository.OutboxPaymentEventJpaRepository
+import com.xeno.subpilot.payment.repository.OutboxPaymentEventRepository
 import com.xeno.subpilot.payment.service.kafka.YooKassaPaymentOutboxPublisher
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
@@ -41,7 +41,7 @@ import kotlin.test.assertEquals
 @ExtendWith(MockKExtension::class)
 class YooKassaPaymentOutboxPublisherTest {
 
-    @MockK lateinit var outboxRepository: OutboxPaymentEventJpaRepository
+    @MockK lateinit var outboxRepository: OutboxPaymentEventRepository
 
     @MockK lateinit var kafkaTemplate: KafkaTemplate<String, String>
 
@@ -80,7 +80,7 @@ class YooKassaPaymentOutboxPublisherTest {
     fun `publish does nothing when no unpublished events`() {
         every { outboxRepository.findUnpublished(BATCH_SIZE) } returns emptyList()
 
-        publisher.publish()
+        publisher.publishPending()
 
         verify(exactly = 0) { kafkaTemplate.send(any<String>(), any<String>()) }
         verify(exactly = 0) { outboxRepository.markPublished(any(), any()) }
@@ -94,7 +94,7 @@ class YooKassaPaymentOutboxPublisherTest {
             CompletableFuture.completedFuture(null)
         every { outboxRepository.markPublished(any(), any()) } returns Unit
 
-        publisher.publish()
+        publisher.publishPending()
 
         verify { kafkaTemplate.send(TOPIC, PAYLOAD_1) }
         verify { kafkaTemplate.send(TOPIC, PAYLOAD_2) }
@@ -109,7 +109,7 @@ class YooKassaPaymentOutboxPublisherTest {
         val markedIds = slot<List<Long>>()
         every { outboxRepository.markPublished(capture(markedIds), any()) } returns Unit
 
-        publisher.publish()
+        publisher.publishPending()
 
         assertEquals(listOf(1L, 2L), markedIds.captured)
     }
@@ -118,7 +118,7 @@ class YooKassaPaymentOutboxPublisherTest {
     fun `publish uses batch size from properties`() {
         every { outboxRepository.findUnpublished(BATCH_SIZE) } returns emptyList()
 
-        publisher.publish()
+        publisher.publishPending()
 
         verify { outboxRepository.findUnpublished(BATCH_SIZE) }
     }

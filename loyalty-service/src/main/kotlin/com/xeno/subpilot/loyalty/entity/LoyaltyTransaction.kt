@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,9 @@ class LoyaltyTransaction(
 
     @Column(name = "payment_id")
     val paymentId: UUID? = null,
+
+    @Column(name = "reason")
+    val reason: String? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: LocalDateTime,

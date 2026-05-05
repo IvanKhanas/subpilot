@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,4 +21,9 @@ interface SubscriptionUserRepository {
     fun findById(userId: Long): SubscriptionUser?
 
     fun insertIfAbsent(userId: Long): Boolean
+
+    fun setBlocked(
+        userId: Long,
+        blocked: Boolean,
+    )
 }

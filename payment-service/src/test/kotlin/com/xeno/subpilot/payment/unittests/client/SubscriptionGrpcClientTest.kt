@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,9 @@
  */
 package com.xeno.subpilot.payment.unittests.client
 
+import com.xeno.subpilot.payment.client.GrpcRetry
 import com.xeno.subpilot.payment.client.SubscriptionGrpcClient
+import com.xeno.subpilot.payment.config.GrpcRetryProperties
 import com.xeno.subpilot.payment.exception.InvalidPlanException
 import com.xeno.subpilot.proto.subscription.v1.SubscriptionServiceGrpcKt
 import com.xeno.subpilot.proto.subscription.v1.getPlanInfoResponse
@@ -29,8 +31,12 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 
 import java.math.BigDecimal
+import java.util.stream.Stream
 
 import kotlin.test.assertEquals
 
@@ -48,11 +54,23 @@ class SubscriptionGrpcClientTest {
         const val PLAN_ID = "openai-basic"
         const val PRICE = "199.00"
         const val CURRENCY = "RUB"
+
+        @JvmStatic
+        fun grpcFailureCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of("NOT_FOUND maps to InvalidPlanException", Status.NOT_FOUND, true),
+                Arguments.of("UNAVAILABLE rethrows StatusException", Status.UNAVAILABLE, false),
+            )
     }
+
+    private val grpcRetry =
+        GrpcRetry(
+            GrpcRetryProperties(maxAttempts = 1, initialBackoffMs = 0, backoffMultiplier = 1.0),
+        )
 
     @BeforeEach
     fun setUp() {
-        client = SubscriptionGrpcClient(stub)
+        client = SubscriptionGrpcClient(stub, grpcRetry)
     }
 
     @Test
@@ -74,23 +92,24 @@ class SubscriptionGrpcClientTest {
             assertEquals(CURRENCY, result.currency)
         }
 
-    @Test
-    fun `getPlanDetails throws InvalidPlanException on NOT_FOUND`() =
-        runTest {
-            coEvery { stub.getPlanInfo(any(), any()) } throws StatusException(Status.NOT_FOUND)
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("grpcFailureCases")
+    fun `getPlanDetails maps gRPC failures`(
+        caseName: String,
+        status: Status,
+        expectInvalidPlan: Boolean,
+    ) = runTest {
+        assertEquals(true, caseName.isNotBlank())
+        coEvery { stub.getPlanInfo(any(), any()) } throws StatusException(status)
 
+        if (expectInvalidPlan) {
             assertThrows<InvalidPlanException> {
                 client.getPlanDetails(PLAN_ID)
             }
-        }
-
-    @Test
-    fun `getPlanDetails rethrows StatusException on other gRPC errors`() =
-        runTest {
-            coEvery { stub.getPlanInfo(any(), any()) } throws StatusException(Status.UNAVAILABLE)
-
+        } else {
             assertThrows<StatusException> {
                 client.getPlanDetails(PLAN_ID)
             }
         }
+    }
 }

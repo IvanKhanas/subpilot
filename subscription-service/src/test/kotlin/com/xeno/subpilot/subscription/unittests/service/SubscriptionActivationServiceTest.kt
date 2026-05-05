@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.justRun
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -48,6 +49,8 @@ class SubscriptionActivationServiceTest {
     @MockK
     lateinit var activationRepository: UserSubscriptionActivationRepository
 
+    private val faker = Faker()
+
     private val fixedClock: Clock =
         Clock.fixed(
             Instant.parse("2026-04-24T12:00:00Z"),
@@ -67,9 +70,13 @@ class SubscriptionActivationServiceTest {
         )
 
     private lateinit var service: SubscriptionActivationService
+    private var primaryUserId: Long = 0L
+    private var secondaryUserId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        primaryUserId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        secondaryUserId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         service = SubscriptionActivationService(planRepository, activationRepository, fixedClock)
         justRun { activationRepository.batchUpsertRequestBalance(any(), any()) }
         every { planRepository.findById("combo-basic") } returns comboPlan
@@ -82,7 +89,7 @@ class SubscriptionActivationServiceTest {
             service.activate(
                 PaymentSucceededEvent(
                     paymentId = UUID.randomUUID(),
-                    userId = 42L,
+                    userId = primaryUserId,
                     planId = "unknown-plan",
                     amount = BigDecimal("100.00"),
                 ),
@@ -106,14 +113,14 @@ class SubscriptionActivationServiceTest {
         every {
             activationRepository.batchInsertUserSubscriptionIfAbsent(
                 paymentId = idempotencyKey,
-                userId = 42L,
+                userId = primaryUserId,
                 planId = "combo-basic",
                 allocations = listOf(openAiAllocation, anthropicAllocation),
                 activatedAt = fixedClock.instant(),
             )
         } returns emptyList()
 
-        val result = service.activateDirect(42L, "combo-basic", idempotencyKey)
+        val result = service.activateDirect(primaryUserId, "combo-basic", idempotencyKey)
 
         assertFalse(result)
         verify(exactly = 0) { activationRepository.batchUpsertRequestBalance(any(), any()) }
@@ -125,19 +132,19 @@ class SubscriptionActivationServiceTest {
         every {
             activationRepository.batchInsertUserSubscriptionIfAbsent(
                 paymentId = idempotencyKey,
-                userId = 42L,
+                userId = primaryUserId,
                 planId = "combo-basic",
                 allocations = listOf(openAiAllocation, anthropicAllocation),
                 activatedAt = fixedClock.instant(),
             )
         } returns listOf("openai")
 
-        val result = service.activateDirect(42L, "combo-basic", idempotencyKey)
+        val result = service.activateDirect(primaryUserId, "combo-basic", idempotencyKey)
 
         assertTrue(result)
         verify {
             activationRepository.batchUpsertRequestBalance(
-                userId = 42L,
+                userId = primaryUserId,
                 allocations = listOf(openAiAllocation),
             )
         }
@@ -149,7 +156,7 @@ class SubscriptionActivationServiceTest {
         every {
             activationRepository.batchInsertUserSubscriptionIfAbsent(
                 paymentId = paymentId,
-                userId = 7L,
+                userId = secondaryUserId,
                 planId = "combo-basic",
                 allocations = listOf(openAiAllocation, anthropicAllocation),
                 activatedAt = fixedClock.instant(),
@@ -160,7 +167,7 @@ class SubscriptionActivationServiceTest {
             service.activate(
                 PaymentSucceededEvent(
                     paymentId = paymentId,
-                    userId = 7L,
+                    userId = secondaryUserId,
                     planId = "combo-basic",
                     amount = BigDecimal("299.00"),
                 ),
@@ -169,7 +176,7 @@ class SubscriptionActivationServiceTest {
         assertTrue(result)
         verify {
             activationRepository.batchUpsertRequestBalance(
-                userId = 7L,
+                userId = secondaryUserId,
                 allocations = listOf(openAiAllocation, anthropicAllocation),
             )
         }

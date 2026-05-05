@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,20 +15,22 @@
  */
 package com.xeno.subpilot.payment.unittests.grpc
 
-import com.xeno.subpilot.payment.client.SubscriptionGrpcClient
+import com.xeno.subpilot.payment.client.SubscriptionClient
 import com.xeno.subpilot.payment.dto.PaymentResult
 import com.xeno.subpilot.payment.dto.PlanDetails
 import com.xeno.subpilot.payment.exception.InvalidPlanException
 import com.xeno.subpilot.payment.grpc.PaymentGrpcService
 import com.xeno.subpilot.payment.service.YooKassaPaymentService
+import com.xeno.subpilot.payment.service.kafka.YooKassaPaymentOutboxPublisher
 import com.xeno.subpilot.proto.payment.v1.createPaymentRequest
+import com.xeno.subpilot.proto.payment.v1.triggerOutboxFlushRequest
 import io.grpc.Status
-import io.grpc.StatusException
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -38,17 +40,22 @@ import java.math.BigDecimal
 
 import kotlin.test.assertEquals
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @ExtendWith(MockKExtension::class)
 class PaymentGrpcServiceTest {
 
     @MockK
-    lateinit var subscriptionGrpcClient: SubscriptionGrpcClient
+    lateinit var subscriptionGrpcClient: SubscriptionClient
 
     @MockK
     lateinit var paymentService: YooKassaPaymentService
+
+    @MockK(relaxed = true)
+    lateinit var outboxPublisher: YooKassaPaymentOutboxPublisher
 
     private lateinit var grpc: PaymentGrpcService
 
@@ -66,6 +73,7 @@ class PaymentGrpcServiceTest {
             PaymentGrpcService(
                 subscriptionGrpcClient = subscriptionGrpcClient,
                 paymentService = paymentService,
+                outboxPublisher = outboxPublisher,
                 ioDispatcher = UnconfinedTestDispatcher(),
             )
     }
@@ -96,13 +104,13 @@ class PaymentGrpcServiceTest {
         }
 
     @Test
-    fun `createPayment throws StatusException with NOT_FOUND on InvalidPlanException`() =
+    fun `createPayment throws InvalidPlanException when plan does not exist`() =
         runTest {
             coEvery { subscriptionGrpcClient.getPlanDetails(PLAN_ID) } throws
                 InvalidPlanException(PLAN_ID)
 
             val ex =
-                assertThrows<StatusException> {
+                assertThrows<InvalidPlanException> {
                     grpc.createPayment(request(bonusPoints = 0))
                 }
 
@@ -110,18 +118,26 @@ class PaymentGrpcServiceTest {
         }
 
     @Test
-    fun `createPayment throws StatusException with INTERNAL on unexpected exception`() =
+    fun `createPayment propagates unexpected exception for handler to convert`() =
         runTest {
             coEvery { subscriptionGrpcClient.getPlanDetails(PLAN_ID) } returns PLAN
             every { paymentService.createPayment(any(), any(), any(), any()) } throws
                 RuntimeException("db down")
 
-            val ex =
-                assertThrows<StatusException> {
-                    grpc.createPayment(request(bonusPoints = 0))
-                }
+            assertThrows<RuntimeException> {
+                grpc.createPayment(request(bonusPoints = 0))
+            }
+        }
 
-            assertEquals(Status.Code.INTERNAL, ex.status.code)
+    @Test
+    fun `triggerOutboxFlush returns flushed event count from outbox publisher`() =
+        runTest {
+            every { outboxPublisher.publishPending() } returns 3
+
+            val response = grpc.triggerOutboxFlush(triggerOutboxFlushRequest { })
+
+            assertEquals(3, response.flushedCount)
+            verify(exactly = 1) { outboxPublisher.publishPending() }
         }
 
     private fun request(bonusPoints: Long) =

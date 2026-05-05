@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,9 @@
  */
 package com.xeno.subpilot.tgbot.runtime
 
+import com.xeno.subpilot.tgbot.client.SubscriptionClient
 import com.xeno.subpilot.tgbot.client.TelegramClient
+import com.xeno.subpilot.tgbot.command.AdminBotCommand
 import com.xeno.subpilot.tgbot.command.BotCommand
 import com.xeno.subpilot.tgbot.dto.CallbackQuery
 import com.xeno.subpilot.tgbot.dto.Message
@@ -36,9 +38,18 @@ class TelegramMessageHandler(
     private val textButtonHandlers: List<TextButtonHandler>,
     private val messageHandler: MessageHandler,
     private val telegramClient: TelegramClient,
+    private val subscriptionClient: SubscriptionClient,
 ) : TelegramUpdateHandler {
 
-    private val commandHandlers = botCommands.associateBy { it.command }
+    private val regularCommandHandlers =
+        botCommands
+            .filterNot { it is AdminBotCommand }
+            .associateBy { it.command }
+
+    private val adminCommandHandlers =
+        botCommands
+            .filterIsInstance<AdminBotCommand>()
+            .associateBy { it.command }
 
     override suspend fun onUpdate(update: Update) {
         when {
@@ -88,24 +99,47 @@ class TelegramMessageHandler(
         text: String,
     ) {
         val command = text.split(" ", "@").first().lowercase()
-        val handler = commandHandlers[command]
 
-        if (handler != null) {
+        val regularHandler = regularCommandHandlers[command]
+        if (regularHandler != null) {
             logger.atDebug {
                 this.message = "telegram_command_received"
                 payload = mapOf("command" to command, "user_id" to message.from?.id)
             }
-            handler.handle(message)
-        } else {
-            telegramClient.sendMessage(
-                chatId = message.chat.id,
-                BotResponses.UNKNOWN_COMMAND_RESPONSE.text,
-            )
+            regularHandler.handle(message)
+            return
+        }
 
-            logger.atDebug {
-                this.message = "unknown_telegram_command_handled"
-                payload = mapOf("command" to command, "user_id" to message.from?.id)
+        val adminHandler = adminCommandHandlers[command]
+        if (adminHandler != null) {
+            val userId = message.from?.id
+            val isAdmin = userId != null && subscriptionClient.getUserInfo(userId)?.isAdmin == true
+            if (isAdmin) {
+                logger.atInfo {
+                    this.message = "admin_command_received"
+                    payload = mapOf("command" to command, "user_id" to userId)
+                }
+                adminHandler.handle(message)
+            } else {
+                sendUnknownCommand(message, command)
             }
+            return
+        }
+
+        sendUnknownCommand(message, command)
+    }
+
+    private suspend fun sendUnknownCommand(
+        message: Message,
+        command: String,
+    ) {
+        telegramClient.sendMessage(
+            chatId = message.chat.id,
+            BotResponses.UNKNOWN_COMMAND_RESPONSE.text,
+        )
+        logger.atDebug {
+            this.message = "unknown_telegram_command_handled"
+            payload = mapOf("command" to command, "user_id" to message.from?.id)
         }
     }
 }

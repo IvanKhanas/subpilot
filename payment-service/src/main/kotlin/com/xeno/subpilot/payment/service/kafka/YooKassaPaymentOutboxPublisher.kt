@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 package com.xeno.subpilot.payment.service.kafka
 
 import com.xeno.subpilot.payment.properties.YooKassaPaymentOutboxProperties
-import com.xeno.subpilot.payment.repository.OutboxPaymentEventJpaRepository
+import com.xeno.subpilot.payment.repository.OutboxPaymentEventRepository
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -27,19 +27,23 @@ import java.time.LocalDateTime
 
 @Service
 class YooKassaPaymentOutboxPublisher(
-    private val outboxPaymentEventJpaRepository: OutboxPaymentEventJpaRepository,
+    private val outboxPaymentEventJpaRepository: OutboxPaymentEventRepository,
     private val yooKassaPaymentOutboxProperties: YooKassaPaymentOutboxProperties,
     private val kafkaTemplate: KafkaTemplate<String, String>,
     private val clock: Clock,
 ) {
 
     @Scheduled(fixedDelayString = "\${yookassa-outbox.scheduler-interval}")
+    fun publishScheduled() {
+        publishPending()
+    }
+
     @Transactional
-    fun publish() {
+    fun publishPending(): Int {
         val events =
             outboxPaymentEventJpaRepository
                 .findUnpublished(yooKassaPaymentOutboxProperties.batchSize)
-        if (events.isEmpty()) return
+        if (events.isEmpty()) return 0
         events
             .map { event -> kafkaTemplate.send("payment_succeeded", event.payload) }
             .forEach { it.get() }
@@ -48,5 +52,6 @@ class YooKassaPaymentOutboxPublisher(
             ids = events.mapNotNull { it.id },
             now = LocalDateTime.now(clock),
         )
+        return events.size
     }
 }

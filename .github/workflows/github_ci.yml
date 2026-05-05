@@ -63,7 +63,9 @@ jobs:
           name: jacoco-xml-reports
           if-no-files-found: error
           path: |
+            admin-service/build/reports/jacoco/test
             chat-service/build/reports/jacoco/test
+            gateway-service/build/reports/jacoco/test
             subscription-service/build/reports/jacoco/test
             tg-bot-service/build/reports/jacoco/test
             payment-service/build/reports/jacoco/test

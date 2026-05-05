@@ -7,6 +7,7 @@ option java_multiple_files = true;
 
 service PaymentService {
     rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse);
+    rpc TriggerOutboxFlush(TriggerOutboxFlushRequest) returns (TriggerOutboxFlushResponse);
 }
 
 message CreatePaymentRequest {
@@ -18,4 +19,10 @@ message CreatePaymentRequest {
 message CreatePaymentResponse {
     string payment_id = 1;
     string confirmation_url = 2;
+}
+
+message TriggerOutboxFlushRequest {}
+
+message TriggerOutboxFlushResponse {
+    int32 flushed_count = 1;
 }

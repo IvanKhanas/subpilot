@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 
 import kotlinx.coroutines.runBlocking
 
@@ -45,30 +47,20 @@ class HelpCommandHandlerTest {
         every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
     }
 
-    @Test
-    fun `sends help response text`() {
-        val message = Message(chat = Chat(id = 1), text = "/help")
+    @ParameterizedTest(name = "chatId={0}")
+    @CsvSource(
+        "1",
+        "123456789",
+    )
+    fun `sends help response to message chat id`(chatId: Long) {
+        val message = Message(chat = Chat(id = chatId), text = "/help")
 
         runBlocking { helpCommandHandler.handle(message) }
 
         verify {
             telegramClient.sendMessage(
-                chatId = 1,
+                chatId = chatId,
                 text = BotResponses.HELP_RESPONSE.text,
-            )
-        }
-    }
-
-    @Test
-    fun `sends message to message chat id`() {
-        val message = Message(chat = Chat(id = 123456789L), text = "/help")
-
-        runBlocking { helpCommandHandler.handle(message) }
-
-        verify {
-            telegramClient.sendMessage(
-                chatId = 123456789L,
-                text = any(),
             )
         }
     }

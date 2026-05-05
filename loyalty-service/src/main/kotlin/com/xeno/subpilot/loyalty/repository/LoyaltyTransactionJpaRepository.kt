@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,6 +56,23 @@ interface LoyaltyTransactionJpaRepository : JpaRepository<LoyaltyTransaction, Lo
         userId: Long,
         amount: Long,
         paymentId: UUID,
+        createdAt: LocalDateTime,
+    ): Int
+
+    @Modifying(clearAutomatically = true)
+    @Query(
+        value = """
+            INSERT INTO loyalty_transaction (user_id, amount, type, payment_id, reason, created_at)
+            VALUES (:userId, :amount, 'ADJUSTED', :idempotencyKey, :reason, :createdAt)
+            ON CONFLICT (payment_id, type) DO NOTHING
+        """,
+        nativeQuery = true,
+    )
+    fun insertAdjustedIfAbsent(
+        userId: Long,
+        amount: Long,
+        idempotencyKey: UUID,
+        reason: String,
         createdAt: LocalDateTime,
     ): Int
 }

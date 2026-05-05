@@ -8,6 +8,7 @@ option java_multiple_files = true;
 service LoyaltyService {
   rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
   rpc SpendPoints(SpendPointsRequest) returns (SpendPointsResponse);
+  rpc AdjustPoints(AdjustPointsRequest) returns (AdjustPointsResponse);
 }
 
 message GetBalanceRequest {
@@ -34,3 +35,12 @@ enum SpendDenialReason {
   SPEND_DENIAL_REASON_INSUFFICIENT_POINTS = 1;
   SPEND_DENIAL_REASON_UNKNOWN_PLAN = 2;
 }
+
+message AdjustPointsRequest {
+  int64 user_id = 1;
+  int64 delta = 2;
+  string reason = 3;
+  string idempotency_key = 4;
+}
+
+message AdjustPointsResponse {}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,4 +27,11 @@ class JpaSubscriptionUserRepository(
     override fun findById(userId: Long): SubscriptionUser? = repository.findByIdOrNull(userId)
 
     override fun insertIfAbsent(userId: Long): Boolean = repository.insertIfAbsent(userId) > 0
+
+    override fun setBlocked(
+        userId: Long,
+        blocked: Boolean,
+    ) {
+        repository.setBlocked(userId, blocked)
+    }
 }

@@ -26,6 +26,12 @@ spring:
       acks: all
 
 
+grpc:
+  retry:
+    max-attempts: ${GRPC_RETRY_MAX_ATTEMPTS:3}
+    initial-backoff-ms: ${GRPC_RETRY_INITIAL_BACKOFF_MS:200}
+    backoff-multiplier: ${GRPC_RETRY_BACKOFF_MULTIPLIER:3.0}
+
 yookassa:
   shop-id: ${YOOKASSA_SHOP_ID:dummy}
   secret-key: ${YOOKASSA_SECRET_KEY:dummy}
@@ -38,3 +44,15 @@ yookassa-outbox:
 
 server:
   port: ${PAYMENT_SERVER_PORT:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        "[http.server.requests]": true

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,13 @@
  */
 package com.xeno.subpilot.loyalty.service
 
-import com.xeno.subpilot.loyalty.client.SubscriptionGrpcClient
+import com.xeno.subpilot.loyalty.client.SubscriptionClient
 import com.xeno.subpilot.loyalty.dto.SpendDenialReason
 import com.xeno.subpilot.loyalty.dto.SpendResult
 import com.xeno.subpilot.loyalty.dto.kafka.PaymentSucceededEvent
 import com.xeno.subpilot.loyalty.properties.LoyaltyProperties
-import com.xeno.subpilot.loyalty.repository.LoyaltyTransactionJpaRepository
-import com.xeno.subpilot.loyalty.repository.UserLoyaltyBalanceJpaRepository
+import com.xeno.subpilot.loyalty.repository.LoyaltyTransactionRepository
+import com.xeno.subpilot.loyalty.repository.UserLoyaltyBalanceRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -37,9 +37,9 @@ private val logger = KotlinLogging.logger {}
 @Service
 class LoyaltyService(
     private val loyaltyProperties: LoyaltyProperties,
-    private val loyaltyTransactionJpaRepository: LoyaltyTransactionJpaRepository,
-    private val userLoyaltyBalanceJpaRepository: UserLoyaltyBalanceJpaRepository,
-    private val subscriptionGrpcClient: SubscriptionGrpcClient,
+    private val loyaltyTransactionJpaRepository: LoyaltyTransactionRepository,
+    private val userLoyaltyBalanceJpaRepository: UserLoyaltyBalanceRepository,
+    private val subscriptionGrpcClient: SubscriptionClient,
     private val clock: Clock,
 ) {
 

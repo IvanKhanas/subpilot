@@ -9,6 +9,12 @@ spring:
         subscription-service:
           address: localhost:9999
 
+grpc:
+  retry:
+    max-attempts: 3
+    initial-backoff-ms: 200
+    backoff-multiplier: 3.0
+
 yookassa:
   shop-id: test-shop-id
   secret-key: test-secret-key

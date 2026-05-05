@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,17 @@
 package com.xeno.subpilot.subscription.testcontainers
 
 import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.kafka.ConfluentKafkaContainer
+import org.testcontainers.utility.DockerImageName
 
 object TestContainersConfiguration {
 
     val postgres: PostgreSQLContainer<*> =
         PostgreSQLContainer("postgres:16-alpine")
             .apply { start() }
+
+    val kafka: ConfluentKafkaContainer by lazy {
+        ConfluentKafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.0"))
+            .apply { start() }
+    }
 }

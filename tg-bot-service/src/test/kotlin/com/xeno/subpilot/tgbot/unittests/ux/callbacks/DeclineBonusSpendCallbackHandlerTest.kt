@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import io.mockk.coJustRun
 import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -40,10 +41,20 @@ class DeclineBonusSpendCallbackHandlerTest {
     @MockK
     lateinit var bonusPurchaseService: BonusPurchaseService
 
+    private val faker = Faker()
+
     private lateinit var handler: DeclineBonusSpendCallbackHandler
+    private var chatId: Long = 0L
+    private var userId: Long = 0L
+    private var messageId: Long = 0L
+    private lateinit var callbackId: String
 
     @BeforeEach
     fun setUp() {
+        chatId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        messageId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        callbackId = "cb-${faker.number().digits(8)}"
         handler = DeclineBonusSpendCallbackHandler(bonusPurchaseService)
         coJustRun { bonusPurchaseService.declineBonusSpend(any(), any(), any(), any(), any()) }
     }
@@ -59,9 +70,14 @@ class DeclineBonusSpendCallbackHandlerTest {
         runTest {
             val callback =
                 CallbackQuery(
-                    id = "cb-1",
-                    from = User(id = 42L),
-                    message = Message(messageId = 7L, chat = Chat(id = 100L), text = "prompt-text"),
+                    id = callbackId,
+                    from = User(id = userId),
+                    message =
+                        Message(
+                            messageId = messageId,
+                            chat = Chat(id = chatId),
+                            text = "prompt-text",
+                        ),
                     data = "bonus_no:openai-basic",
                 )
 
@@ -69,10 +85,10 @@ class DeclineBonusSpendCallbackHandlerTest {
 
             coVerify {
                 bonusPurchaseService.declineBonusSpend(
-                    chatId = 100L,
-                    userId = 42L,
+                    chatId = chatId,
+                    userId = userId,
                     planId = "openai-basic",
-                    promptMessageId = 7L,
+                    promptMessageId = messageId,
                     promptText = "prompt-text",
                 )
             }
@@ -81,7 +97,7 @@ class DeclineBonusSpendCallbackHandlerTest {
     @Test
     fun `handle does nothing when callback misses required fields`() =
         runTest {
-            handler.handle(CallbackQuery(id = "cb-1", data = "bonus_no:openai-basic"))
+            handler.handle(CallbackQuery(id = callbackId, data = "bonus_no:openai-basic"))
 
             coVerify(
                 exactly = 0,

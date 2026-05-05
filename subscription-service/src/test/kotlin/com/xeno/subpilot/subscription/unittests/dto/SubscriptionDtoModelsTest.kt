@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import com.xeno.subpilot.subscription.dto.FreeProviderBalance
 import com.xeno.subpilot.subscription.dto.PaidProviderBalance
 import com.xeno.subpilot.subscription.dto.kafka.PaymentSucceededEvent
 import com.xeno.subpilot.subscription.dto.kafka.SubscriptionActivatedEvent
+import net.datafaker.Faker
 import org.junit.jupiter.api.Test
 
 import java.math.BigDecimal
@@ -29,6 +30,8 @@ import java.util.UUID
 import kotlin.test.assertEquals
 
 class SubscriptionDtoModelsTest {
+
+    private val faker = Faker()
 
     @Test
     fun `balance dto keeps free and paid entries`() {
@@ -47,25 +50,27 @@ class SubscriptionDtoModelsTest {
     @Test
     fun `payment succeeded event keeps identifiers and amount`() {
         val paymentId = UUID.randomUUID()
+        val userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         val event =
             PaymentSucceededEvent(
                 paymentId = paymentId,
-                userId = 42L,
+                userId = userId,
                 planId = "openai-basic",
                 amount = BigDecimal("199.00"),
             )
 
         assertEquals(paymentId, event.paymentId)
-        assertEquals(42L, event.userId)
+        assertEquals(userId, event.userId)
         assertEquals("openai-basic", event.planId)
         assertEquals(BigDecimal("199.00"), event.amount)
     }
 
     @Test
     fun `subscription activated event keeps plan and allocations`() {
+        val userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         val event =
             SubscriptionActivatedEvent(
-                userId = 42L,
+                userId = userId,
                 planDisplayName = "Basic",
                 allocations =
                     listOf(
@@ -76,7 +81,7 @@ class SubscriptionDtoModelsTest {
                     ),
             )
 
-        assertEquals(42L, event.userId)
+        assertEquals(userId, event.userId)
         assertEquals("Basic", event.planDisplayName)
         assertEquals("openai", event.allocations.single().provider)
         assertEquals(100, event.allocations.single().requests)

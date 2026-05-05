@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -154,6 +154,25 @@ enum class BotResponses(
     BONUS_SPEND_FAILED_RESPONSE(
         "Failed to apply bonus points. Please try again later.",
     ),
+
+    ADMIN_USER_INFO_RESPONSE(
+        """
+        User %d
+        Registered: %s
+        Role: %s
+        Status: %s
+        """.trimIndent(),
+    ),
+
+    ADMIN_USER_NOT_FOUND_RESPONSE("User %d not found."),
+
+    ADMIN_BAN_SUCCESS_RESPONSE("User %d has been banned."),
+
+    ADMIN_UNBAN_SUCCESS_RESPONSE("User %d has been unbanned."),
+
+    ADMIN_ACTION_FAILED_RESPONSE("Action failed. Please try again."),
+
+    ADMIN_INVALID_USAGE_RESPONSE("Usage: %s <user_id>"),
     ;
 
     fun format(vararg args: Any): String = text.format(*args)

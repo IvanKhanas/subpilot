@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.xeno.subpilot.subscription.service.kafka
 
 import com.xeno.subpilot.subscription.dto.kafka.PaymentSucceededEvent
 import com.xeno.subpilot.subscription.dto.kafka.SubscriptionActivatedEvent
+import com.xeno.subpilot.subscription.metrics.SubscriptionMetrics
 import com.xeno.subpilot.subscription.repository.PlanRepository
 import com.xeno.subpilot.subscription.service.SubscriptionActivationService
 import org.springframework.kafka.annotation.KafkaListener
@@ -30,6 +31,7 @@ class PaymentSucceededConsumer(
     private val planRepository: PlanRepository,
     private val kafkaTemplate: KafkaTemplate<String, String>,
     private val objectMapper: ObjectMapper,
+    private val metrics: SubscriptionMetrics,
 ) {
 
     @KafkaListener(topics = ["payment_succeeded"])
@@ -37,6 +39,7 @@ class PaymentSucceededConsumer(
         val event = objectMapper.readValue(message, PaymentSucceededEvent::class.java)
         val activated = activationService.activate(event)
         if (activated) {
+            metrics.subscriptionActivations.increment()
             publishActivated(event)
         }
     }

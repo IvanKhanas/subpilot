@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,12 +23,16 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.justRun
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 import kotlinx.coroutines.test.runTest
 
@@ -38,10 +42,16 @@ class AIResponseWaitingIndicatorTest {
     @MockK
     lateinit var telegramClient: TelegramClient
 
+    private val faker = Faker()
+
     private lateinit var indicator: AIResponseWaitingIndicator
+    private var chatId: Long = 0L
+    private var waitingMessageId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        chatId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        waitingMessageId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         indicator = AIResponseWaitingIndicator(telegramClient)
     }
 
@@ -50,7 +60,7 @@ class AIResponseWaitingIndicatorTest {
         runTest {
             every { telegramClient.sendMessage(any(), any()) } returns null
 
-            val result = indicator.wrap(chatId = 1L) { "ai response" }
+            val result = indicator.wrap(chatId = chatId) { "ai response" }
 
             assertEquals("ai response", result)
         }
@@ -60,35 +70,34 @@ class AIResponseWaitingIndicatorTest {
         runTest {
             every { telegramClient.sendMessage(any(), any()) } returns null
 
-            indicator.wrap(chatId = 77L) { "result" }
+            indicator.wrap(chatId = chatId) { "result" }
 
-            verify { telegramClient.sendMessage(77L, BotResponses.WAITING_RESPONSE.text) }
+            verify { telegramClient.sendMessage(chatId, BotResponses.WAITING_RESPONSE.text) }
         }
 
-    @Test
-    fun `wrap calls block and deletes waiting message on success`() =
-        runTest {
-            every { telegramClient.sendMessage(any(), any()) } returns 99L
-            justRun { telegramClient.editMessage(any(), any(), any()) }
-            justRun { telegramClient.deleteMessage(any(), any()) }
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(
+        "success path, false",
+        "exception path, true",
+    )
+    fun `wrap deletes waiting message when waiting message exists`(
+        caseName: String,
+        blockThrows: Boolean,
+    ) = runTest {
+        assertTrue(caseName.isNotBlank())
+        every { telegramClient.sendMessage(any(), any()) } returns waitingMessageId
+        justRun { telegramClient.editMessage(any(), any(), any()) }
+        justRun { telegramClient.deleteMessage(any(), any()) }
 
-            val result = indicator.wrap(chatId = 42L) { "ai response" }
-
-            assertEquals("ai response", result)
-            verify { telegramClient.deleteMessage(42L, 99L) }
-        }
-
-    @Test
-    fun `wrap deletes waiting message even when block throws`() =
-        runTest {
-            every { telegramClient.sendMessage(any(), any()) } returns 99L
-            justRun { telegramClient.editMessage(any(), any(), any()) }
-            justRun { telegramClient.deleteMessage(any(), any()) }
-
+        if (blockThrows) {
             assertThrows<RuntimeException> {
-                indicator.wrap(chatId = 42L) { throw RuntimeException("boom") }
+                indicator.wrap(chatId = chatId) { throw RuntimeException("boom") }
             }
-
-            verify { telegramClient.deleteMessage(42L, 99L) }
+        } else {
+            val result = indicator.wrap(chatId = chatId) { "ai response" }
+            assertEquals("ai response", result)
         }
+
+        verify { telegramClient.deleteMessage(chatId, waitingMessageId) }
+    }
 }

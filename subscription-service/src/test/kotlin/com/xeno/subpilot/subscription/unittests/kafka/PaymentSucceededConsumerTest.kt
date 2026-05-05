@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,19 @@ package com.xeno.subpilot.subscription.unittests.kafka
 
 import com.xeno.subpilot.subscription.dto.kafka.PaymentSucceededEvent
 import com.xeno.subpilot.subscription.dto.kafka.SubscriptionActivatedEvent
+import com.xeno.subpilot.subscription.metrics.SubscriptionMetrics
 import com.xeno.subpilot.subscription.properties.PlanProperties
 import com.xeno.subpilot.subscription.properties.ProviderAllocation
 import com.xeno.subpilot.subscription.repository.PlanRepository
 import com.xeno.subpilot.subscription.service.SubscriptionActivationService
 import com.xeno.subpilot.subscription.service.kafka.PaymentSucceededConsumer
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.slot
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -54,6 +57,8 @@ class PaymentSucceededConsumerTest {
     @MockK
     lateinit var objectMapper: ObjectMapper
 
+    private val faker = Faker()
+
     private val openaiBasicPlan =
         PlanProperties(
             provider = "openai",
@@ -63,16 +68,22 @@ class PaymentSucceededConsumerTest {
             allocations = listOf(ProviderAllocation(provider = "openai", requests = 100)),
         )
 
+    private val meterRegistry = SimpleMeterRegistry()
+    private val metrics = SubscriptionMetrics(meterRegistry)
+
     private lateinit var consumer: PaymentSucceededConsumer
+    private var userId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         consumer =
             PaymentSucceededConsumer(
                 activationService,
                 planRepository,
                 kafkaTemplate,
                 objectMapper,
+                metrics,
             )
         every { kafkaTemplate.send(any(), any()) } returns CompletableFuture.completedFuture(null)
         every { planRepository.findById("openai-basic") } returns openaiBasicPlan
@@ -84,7 +95,7 @@ class PaymentSucceededConsumerTest {
         val paymentEvent =
             PaymentSucceededEvent(
                 paymentId = UUID.randomUUID(),
-                userId = 42L,
+                userId = userId,
                 planId = "openai-basic",
                 amount = BigDecimal("199.00"),
             )
@@ -104,7 +115,7 @@ class PaymentSucceededConsumerTest {
         verify { kafkaTemplate.send("subscription_activated", """{"ok":true}""") }
 
         val notification = publishedEvent.captured as SubscriptionActivatedEvent
-        assertEquals(42L, notification.userId)
+        assertEquals(userId, notification.userId)
         assertEquals("Basic - 100 requests for OpenAI", notification.planDisplayName)
         assertEquals(1, notification.allocations.size)
         assertEquals("openai", notification.allocations[0].provider)
@@ -116,7 +127,7 @@ class PaymentSucceededConsumerTest {
         val paymentEvent =
             PaymentSucceededEvent(
                 paymentId = UUID.randomUUID(),
-                userId = 42L,
+                userId = userId,
                 planId = "openai-basic",
                 amount = BigDecimal("199.00"),
             )
@@ -139,7 +150,7 @@ class PaymentSucceededConsumerTest {
         val paymentEvent =
             PaymentSucceededEvent(
                 paymentId = UUID.randomUUID(),
-                userId = 42L,
+                userId = userId,
                 planId = "unknown-plan",
                 amount = BigDecimal("199.00"),
             )
@@ -155,5 +166,42 @@ class PaymentSucceededConsumerTest {
 
         verify(exactly = 0) { objectMapper.writeValueAsString(any()) }
         verify(exactly = 0) { kafkaTemplate.send(any(), any()) }
+    }
+
+    @Test
+    fun `consume increments subscription_activations_total when activated`() {
+        val paymentEvent =
+            PaymentSucceededEvent(
+                paymentId = UUID.randomUUID(),
+                userId = userId,
+                planId = "openai-basic",
+                amount = BigDecimal("199.00"),
+            )
+        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns
+            paymentEvent
+        every { activationService.activate(paymentEvent) } returns true
+        every { objectMapper.writeValueAsString(any()) } returns """{"ok":true}"""
+
+        consumer.consume("event-json")
+
+        assertEquals(1.0, meterRegistry.counter("subscription_activations_total").count())
+    }
+
+    @Test
+    fun `consume does not increment subscription_activations_total when not activated`() {
+        val paymentEvent =
+            PaymentSucceededEvent(
+                paymentId = UUID.randomUUID(),
+                userId = userId,
+                planId = "openai-basic",
+                amount = BigDecimal("199.00"),
+            )
+        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns
+            paymentEvent
+        every { activationService.activate(paymentEvent) } returns false
+
+        consumer.consume("event-json")
+
+        assertEquals(0.0, meterRegistry.counter("subscription_activations_total").count())
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import io.mockk.coEvery
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -41,24 +42,32 @@ class PlanPurchaseServiceTest {
     @MockK
     lateinit var telegramClient: TelegramClient
 
+    private val faker = Faker()
+
     private lateinit var service: PlanPurchaseService
+    private var chatId: Long = 0L
+    private var userId: Long = 0L
+    private var sentMessageId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        chatId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        sentMessageId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         service = PlanPurchaseService(paymentClient, telegramClient)
     }
 
     @Test
     fun `startPayment sends confirmation link message when payment is created`() {
-        coEvery { paymentClient.createPayment(42L, "openai-basic", 50) } returns
+        coEvery { paymentClient.createPayment(userId, "openai-basic", 50) } returns
             "https://pay.example/link"
         val textSlot = io.mockk.slot<String>()
         everySendMessageCapture(textSlot)
 
         runBlocking {
             service.startPayment(
-                chatId = 100L,
-                userId = 42L,
+                chatId = chatId,
+                userId = userId,
                 planId = "openai-basic",
                 bonusPointsToApply = 50,
             )
@@ -75,12 +84,12 @@ class PlanPurchaseServiceTest {
         everySendMessageCapture(textSlot)
 
         runBlocking {
-            service.startPayment(chatId = 100L, userId = 42L, planId = "openai-basic")
+            service.startPayment(chatId = chatId, userId = userId, planId = "openai-basic")
         }
 
         verify {
             telegramClient.sendMessage(
-                100L,
+                chatId,
                 BotResponses.PAYMENT_FAILED_RESPONSE.text,
                 any(),
                 any(),
@@ -96,7 +105,6 @@ class PlanPurchaseServiceTest {
                 any(),
                 any(),
             )
-        } returns
-            1L
+        } returns sentMessageId
     }
 }

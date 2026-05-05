@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Ivan Khanas
+ * Copyright 2026 Ivan Khanas
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,11 +24,16 @@ import io.mockk.coJustRun
 import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
+
+import java.util.stream.Stream
+
+import kotlin.test.assertEquals
 
 import kotlinx.coroutines.test.runTest
 
@@ -45,14 +50,13 @@ class HelpTextButtonHandlerTest {
         handler = HelpTextButtonHandler(helpCommandHandler)
     }
 
-    @Test
-    fun `supports returns true for help button text`() {
-        assertTrue(handler.supports(BotButtons.BTN_HELP))
-    }
-
-    @Test
-    fun `supports returns false for unknown text`() {
-        assertFalse(handler.supports("unknown"))
+    @ParameterizedTest(name = "supports(''{0}'')={1}")
+    @MethodSource("supportsCases")
+    fun `supports handles help button text`(
+        text: String,
+        expected: Boolean,
+    ) {
+        assertEquals(expected, handler.supports(text))
     }
 
     @Test
@@ -65,4 +69,13 @@ class HelpTextButtonHandlerTest {
 
             coVerify(exactly = 1) { helpCommandHandler.handle(message) }
         }
+
+    companion object {
+        @JvmStatic
+        fun supportsCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of(BotButtons.BTN_HELP, true),
+                Arguments.of("unknown", false),
+            )
+    }
 }
