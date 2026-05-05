@@ -18,9 +18,15 @@ package com.xeno.subpilot.admin.repository
 import com.xeno.subpilot.admin.entity.AuditLog
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.stereotype.Repository
 
-interface AuditLogRepository {
-    fun save(auditLog: AuditLog): AuditLog
+@Repository
+class JpaAuditLogRepository(
+    private val repository: AuditLogJpaRepository,
+) : AuditLogRepository {
 
-    fun findAllByOrderByCreatedAtDesc(pageable: Pageable): Page<AuditLog>
+    override fun save(auditLog: AuditLog): AuditLog = repository.save(auditLog)
+
+    override fun findAllByOrderByCreatedAtDesc(pageable: Pageable): Page<AuditLog> =
+        repository.findAllByOrderByCreatedAtDesc(pageable)
 }

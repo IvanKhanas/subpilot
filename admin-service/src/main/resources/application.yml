@@ -31,6 +31,12 @@ spring:
         jwt:
           secret: ${ADMIN_JWT_SECRET}
 
+grpc:
+  retry:
+    max-attempts: ${GRPC_RETRY_MAX_ATTEMPTS:3}
+    initial-backoff-ms: ${GRPC_RETRY_INITIAL_BACKOFF_MS:200}
+    backoff-multiplier: ${GRPC_RETRY_BACKOFF_MULTIPLIER:3.0}
+
 admin:
   auth:
     jwt:

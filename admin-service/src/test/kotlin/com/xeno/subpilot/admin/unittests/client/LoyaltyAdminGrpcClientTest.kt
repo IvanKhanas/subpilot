@@ -15,7 +15,9 @@
  */
 package com.xeno.subpilot.admin.unittests.client
 
+import com.xeno.subpilot.admin.client.GrpcRetry
 import com.xeno.subpilot.admin.client.LoyaltyAdminGrpcClient
+import com.xeno.subpilot.admin.config.GrpcRetryProperties
 import com.xeno.subpilot.admin.unittests.AdminTestFixtures
 import com.xeno.subpilot.proto.loyalty.v1.AdjustPointsResponse
 import com.xeno.subpilot.proto.loyalty.v1.GetBalanceResponse
@@ -46,9 +48,14 @@ class LoyaltyAdminGrpcClientTest {
         const val REASON = "manual grant"
     }
 
+    private val grpcRetry =
+        GrpcRetry(
+            GrpcRetryProperties(maxAttempts = 1, initialBackoffMs = 0, backoffMultiplier = 1.0),
+        )
+
     @BeforeEach
     fun setUp() {
-        client = LoyaltyAdminGrpcClient(stub)
+        client = LoyaltyAdminGrpcClient(stub, grpcRetry)
     }
 
     @Test

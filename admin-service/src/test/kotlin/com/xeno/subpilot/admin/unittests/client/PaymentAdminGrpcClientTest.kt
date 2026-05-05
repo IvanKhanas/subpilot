@@ -15,7 +15,9 @@
  */
 package com.xeno.subpilot.admin.unittests.client
 
+import com.xeno.subpilot.admin.client.GrpcRetry
 import com.xeno.subpilot.admin.client.PaymentAdminGrpcClient
+import com.xeno.subpilot.admin.config.GrpcRetryProperties
 import com.xeno.subpilot.proto.payment.v1.PaymentServiceGrpcKt
 import com.xeno.subpilot.proto.payment.v1.TriggerOutboxFlushResponse
 import io.mockk.coEvery
@@ -42,9 +44,14 @@ class PaymentAdminGrpcClientTest {
         const val FLUSHED_COUNT = 14
     }
 
+    private val grpcRetry =
+        GrpcRetry(
+            GrpcRetryProperties(maxAttempts = 1, initialBackoffMs = 0, backoffMultiplier = 1.0),
+        )
+
     @BeforeEach
     fun setUp() {
-        client = PaymentAdminGrpcClient(stub)
+        client = PaymentAdminGrpcClient(stub, grpcRetry)
     }
 
     @Test

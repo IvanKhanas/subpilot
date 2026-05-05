@@ -15,19 +15,29 @@
  */
 package com.xeno.subpilot.admin.client
 
-import com.xeno.subpilot.proto.payment.v1.PaymentServiceGrpcKt
-import com.xeno.subpilot.proto.payment.v1.TriggerOutboxFlushRequest
+import com.xeno.subpilot.admin.config.GrpcRetryProperties
+import io.grpc.Status
+import io.grpc.StatusException
 import org.springframework.stereotype.Component
 
-@Component
-class PaymentAdminGrpcClient(
-    private val stub: PaymentServiceGrpcKt.PaymentServiceCoroutineStub,
-    private val grpcRetry: GrpcRetry,
-) : PaymentAdminClient {
+import kotlinx.coroutines.delay
 
-    override suspend fun triggerOutboxFlush(): Int =
-        grpcRetry
-            .retryOnUnavailable {
-                stub.triggerOutboxFlush(TriggerOutboxFlushRequest.getDefaultInstance())
-            }.flushedCount
+@Component
+class GrpcRetry(
+    private val props: GrpcRetryProperties,
+) {
+
+    suspend fun <T> retryOnUnavailable(block: suspend () -> T): T {
+        var backoffMs = props.initialBackoffMs
+        repeat(props.maxAttempts - 1) {
+            try {
+                return block()
+            } catch (ex: StatusException) {
+                if (ex.status.code != Status.Code.UNAVAILABLE) throw ex
+            }
+            delay(backoffMs)
+            backoffMs = (backoffMs * props.backoffMultiplier).toLong()
+        }
+        return block()
+    }
 }

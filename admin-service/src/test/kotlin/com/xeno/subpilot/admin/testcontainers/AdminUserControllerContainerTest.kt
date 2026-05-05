@@ -26,7 +26,7 @@ import com.xeno.subpilot.admin.client.PaymentAdminClient
 import com.xeno.subpilot.admin.client.SubscriptionAdminClient
 import com.xeno.subpilot.admin.entity.AdminAction
 import com.xeno.subpilot.admin.entity.AdminTargetType
-import com.xeno.subpilot.admin.repository.AuditLogRepository
+import com.xeno.subpilot.admin.repository.AuditLogJpaRepository
 import io.mockk.coJustRun
 import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
@@ -70,7 +70,7 @@ class AdminUserControllerContainerTest {
     private var port: Int = 0
 
     @Autowired
-    lateinit var auditLogRepository: AuditLogRepository
+    lateinit var auditLogRepository: AuditLogJpaRepository
 
     private lateinit var restTemplate: RestTemplate
 

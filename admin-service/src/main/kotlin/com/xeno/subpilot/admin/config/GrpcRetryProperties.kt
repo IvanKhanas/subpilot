@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.xeno.subpilot.admin.repository
+package com.xeno.subpilot.admin.config
 
-import com.xeno.subpilot.admin.entity.AuditLog
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
+import org.springframework.boot.context.properties.ConfigurationProperties
 
-interface AuditLogRepository {
-    fun save(auditLog: AuditLog): AuditLog
-
-    fun findAllByOrderByCreatedAtDesc(pageable: Pageable): Page<AuditLog>
-}
+@ConfigurationProperties(prefix = "grpc.retry")
+data class GrpcRetryProperties(
+    val maxAttempts: Int,
+    val initialBackoffMs: Long,
+    val backoffMultiplier: Double,
+)

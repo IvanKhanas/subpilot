@@ -15,7 +15,9 @@
  */
 package com.xeno.subpilot.admin.unittests.client
 
+import com.xeno.subpilot.admin.client.GrpcRetry
 import com.xeno.subpilot.admin.client.SubscriptionAdminGrpcClient
+import com.xeno.subpilot.admin.config.GrpcRetryProperties
 import com.xeno.subpilot.admin.exception.UserNotFoundException
 import com.xeno.subpilot.admin.unittests.AdminTestFixtures
 import com.xeno.subpilot.proto.subscription.v1.ActivateSubscriptionResponse
@@ -59,9 +61,14 @@ class SubscriptionAdminGrpcClientTest {
         const val ERROR_DESCRIPTION = "grpc failure"
     }
 
+    private val grpcRetry =
+        GrpcRetry(
+            GrpcRetryProperties(maxAttempts = 1, initialBackoffMs = 0, backoffMultiplier = 1.0),
+        )
+
     @BeforeEach
     fun setUp() {
-        client = SubscriptionAdminGrpcClient(stub)
+        client = SubscriptionAdminGrpcClient(stub, grpcRetry)
     }
 
     @Test

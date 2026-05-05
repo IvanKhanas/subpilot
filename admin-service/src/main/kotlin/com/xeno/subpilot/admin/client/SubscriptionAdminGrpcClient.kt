@@ -35,20 +35,28 @@ private val logger = KotlinLogging.logger {}
 @Component
 class SubscriptionAdminGrpcClient(
     private val stub: SubscriptionServiceGrpcKt.SubscriptionServiceCoroutineStub,
+    private val grpcRetry: GrpcRetry,
 ) : SubscriptionAdminClient {
 
     override suspend fun getUserInfo(userId: Long): GetUserInfoResponse {
-        val response = stub.getUserInfo(getUserInfoRequest { this.userId = userId })
+        val response =
+            grpcRetry.retryOnUnavailable {
+                stub.getUserInfo(getUserInfoRequest { this.userId = userId })
+            }
         if (!response.found) throw UserNotFoundException(userId)
         return response
     }
 
     override suspend fun getBalance(userId: Long): GetBalanceResponse =
-        stub.getBalance(getBalanceRequest { this.userId = userId })
+        grpcRetry.retryOnUnavailable {
+            stub.getBalance(getBalanceRequest { this.userId = userId })
+        }
 
     override suspend fun blockUser(userId: Long) {
         try {
-            stub.blockUser(blockUserRequest { this.userId = userId })
+            grpcRetry.retryOnUnavailable {
+                stub.blockUser(blockUserRequest { this.userId = userId })
+            }
         } catch (ex: StatusException) {
             logger.atError {
                 this.message = "admin_block_user_failed"
@@ -61,7 +69,9 @@ class SubscriptionAdminGrpcClient(
 
     override suspend fun unblockUser(userId: Long) {
         try {
-            stub.unblockUser(unblockUserRequest { this.userId = userId })
+            grpcRetry.retryOnUnavailable {
+                stub.unblockUser(unblockUserRequest { this.userId = userId })
+            }
         } catch (ex: StatusException) {
             logger.atError {
                 this.message = "admin_unblock_user_failed"
@@ -78,13 +88,15 @@ class SubscriptionAdminGrpcClient(
         idempotencyKey: String,
     ) {
         try {
-            stub.activateSubscription(
-                activateSubscriptionRequest {
-                    this.userId = userId
-                    this.planId = planId
-                    this.idempotencyKey = idempotencyKey
-                },
-            )
+            grpcRetry.retryOnUnavailable {
+                stub.activateSubscription(
+                    activateSubscriptionRequest {
+                        this.userId = userId
+                        this.planId = planId
+                        this.idempotencyKey = idempotencyKey
+                    },
+                )
+            }
         } catch (ex: StatusException) {
             logger.atError {
                 this.message = "admin_activate_subscription_failed"
@@ -121,7 +133,7 @@ class SubscriptionAdminGrpcClient(
                     },
                 ).build()
         try {
-            stub.createPlan(request)
+            grpcRetry.retryOnUnavailable { stub.createPlan(request) }
         } catch (ex: StatusException) {
             logger.atError {
                 this.message = "admin_create_plan_failed"

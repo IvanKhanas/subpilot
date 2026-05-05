@@ -23,10 +23,14 @@ import org.springframework.stereotype.Component
 @Component
 class LoyaltyAdminGrpcClient(
     private val stub: LoyaltyServiceGrpcKt.LoyaltyServiceCoroutineStub,
+    private val grpcRetry: GrpcRetry,
 ) : LoyaltyAdminClient {
 
     override suspend fun getBalance(userId: Long): Long =
-        stub.getBalance(getBalanceRequest { this.userId = userId }).points
+        grpcRetry
+            .retryOnUnavailable {
+                stub.getBalance(getBalanceRequest { this.userId = userId })
+            }.points
 
     override suspend fun adjustPoints(
         userId: Long,
@@ -34,13 +38,15 @@ class LoyaltyAdminGrpcClient(
         reason: String,
         idempotencyKey: String,
     ) {
-        stub.adjustPoints(
-            adjustPointsRequest {
-                this.userId = userId
-                this.delta = delta
-                this.reason = reason
-                this.idempotencyKey = idempotencyKey
-            },
-        )
+        grpcRetry.retryOnUnavailable {
+            stub.adjustPoints(
+                adjustPointsRequest {
+                    this.userId = userId
+                    this.delta = delta
+                    this.reason = reason
+                    this.idempotencyKey = idempotencyKey
+                },
+            )
+        }
     }
 }
