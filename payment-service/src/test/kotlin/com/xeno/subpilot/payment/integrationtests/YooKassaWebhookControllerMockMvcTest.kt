@@ -29,9 +29,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.test.web.servlet.setup.MockMvcBuilders
 
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -64,7 +64,11 @@ class YooKassaWebhookControllerMockMvcTest {
 
     @BeforeEach
     fun setUp() {
-        metrics = PaymentMetrics(io.micrometer.core.instrument.simple.SimpleMeterRegistry())
+        metrics =
+            PaymentMetrics(
+                io.micrometer.core.instrument.simple
+                    .SimpleMeterRegistry(),
+            )
         mockMvc =
             MockMvcBuilders
                 .standaloneSetup(YooKassaPaymentWebhookController(paymentService, metrics))
@@ -85,7 +89,11 @@ class YooKassaWebhookControllerMockMvcTest {
 
         verify(exactly = 1) { paymentService.handlePaymentWebhook(any()) }
         assertEquals("payment.succeeded", eventSlot.captured.event)
-        assertEquals(YOOKASSA_PAYMENT_ID, eventSlot.captured.payment.id.toString())
+        assertEquals(
+            YOOKASSA_PAYMENT_ID,
+            eventSlot.captured.payment.id
+                .toString(),
+        )
     }
 
     @Test

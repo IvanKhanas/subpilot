@@ -24,8 +24,8 @@ import com.xeno.subpilot.payment.entity.OutboxPaymentEvent
 import com.xeno.subpilot.payment.entity.Payment
 import com.xeno.subpilot.payment.entity.PaymentStatus
 import com.xeno.subpilot.payment.metrics.PaymentMetrics
-import com.xeno.subpilot.payment.repository.OutboxPaymentEventJpaRepository
-import com.xeno.subpilot.payment.repository.PaymentJpaRepository
+import com.xeno.subpilot.payment.repository.OutboxPaymentEventRepository
+import com.xeno.subpilot.payment.repository.PaymentRepository
 import com.xeno.subpilot.payment.service.YooKassaPaymentService
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
@@ -53,11 +53,11 @@ import kotlin.test.assertNull
 @ExtendWith(MockKExtension::class)
 class YooKassaPaymentServiceTest {
 
-    @MockK lateinit var paymentJpaRepository: PaymentJpaRepository
+    @MockK lateinit var paymentJpaRepository: PaymentRepository
 
     @MockK lateinit var yooKassaClient: YooKassaClient
 
-    @MockK lateinit var outboxRepository: OutboxPaymentEventJpaRepository
+    @MockK lateinit var outboxRepository: OutboxPaymentEventRepository
 
     private val objectMapper = JsonMapper.builder().build()
     private val fixedClock: Clock =

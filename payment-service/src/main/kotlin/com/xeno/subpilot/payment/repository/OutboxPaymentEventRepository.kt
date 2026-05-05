@@ -13,13 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.xeno.subpilot.payment.exception
+package com.xeno.subpilot.payment.repository
 
-import io.grpc.Status
+import com.xeno.subpilot.payment.entity.OutboxPaymentEvent
 
-class InvalidPlanException(
-    planId: String,
-) : PaymentException(
-        status = Status.NOT_FOUND,
-        message = planId,
+import java.time.LocalDateTime
+
+interface OutboxPaymentEventRepository {
+    fun save(event: OutboxPaymentEvent): OutboxPaymentEvent
+
+    fun findUnpublished(limit: Int): List<OutboxPaymentEvent>
+
+    fun countByPublishedAtIsNull(): Long
+
+    fun markPublished(
+        ids: List<Long>,
+        now: LocalDateTime,
     )
+}

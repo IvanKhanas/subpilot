@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.xeno.subpilot.payment.exception
+package com.xeno.subpilot.payment.config
 
-import io.grpc.Status
+import org.springframework.boot.context.properties.ConfigurationProperties
 
-class InvalidPlanException(
-    planId: String,
-) : PaymentException(
-        status = Status.NOT_FOUND,
-        message = planId,
-    )
+@ConfigurationProperties(prefix = "grpc.retry")
+data class GrpcRetryProperties(
+    val maxAttempts: Int,
+    val initialBackoffMs: Long,
+    val backoffMultiplier: Double,
+)

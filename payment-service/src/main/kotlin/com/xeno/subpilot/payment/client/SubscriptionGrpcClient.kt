@@ -31,11 +31,15 @@ private val logger = KotlinLogging.logger {}
 @Component
 class SubscriptionGrpcClient(
     private val stub: SubscriptionServiceGrpcKt.SubscriptionServiceCoroutineStub,
+    private val grpcRetry: GrpcRetry,
 ) : SubscriptionClient {
 
     override suspend fun getPlanDetails(planId: String): PlanDetails {
         try {
-            val response = stub.getPlanInfo(getPlanInfoRequest { this.planId = planId })
+            val response =
+                grpcRetry.retryOnUnavailable {
+                    stub.getPlanInfo(getPlanInfoRequest { this.planId = planId })
+                }
             return PlanDetails(
                 price = BigDecimal(response.plan.price),
                 currency = response.plan.currency,

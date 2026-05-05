@@ -13,13 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.xeno.subpilot.payment.exception
+package com.xeno.subpilot.payment.repository
 
-import io.grpc.Status
+import com.xeno.subpilot.payment.entity.Payment
+import com.xeno.subpilot.payment.entity.PaymentStatus
 
-class InvalidPlanException(
-    planId: String,
-) : PaymentException(
-        status = Status.NOT_FOUND,
-        message = planId,
-    )
+import java.time.LocalDateTime
+import java.util.UUID
+
+interface PaymentRepository {
+    fun save(payment: Payment): Payment
+
+    fun findByYooKassaPaymentId(yooKassaPaymentId: UUID): Payment?
+
+    fun updateStatusIfPending(
+        id: UUID,
+        status: PaymentStatus,
+        now: LocalDateTime,
+    ): Int
+}

@@ -17,7 +17,7 @@ package com.xeno.subpilot.payment.unittests.service
 
 import com.xeno.subpilot.payment.entity.OutboxPaymentEvent
 import com.xeno.subpilot.payment.properties.YooKassaPaymentOutboxProperties
-import com.xeno.subpilot.payment.repository.OutboxPaymentEventJpaRepository
+import com.xeno.subpilot.payment.repository.OutboxPaymentEventRepository
 import com.xeno.subpilot.payment.service.kafka.YooKassaPaymentOutboxPublisher
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
@@ -41,7 +41,7 @@ import kotlin.test.assertEquals
 @ExtendWith(MockKExtension::class)
 class YooKassaPaymentOutboxPublisherTest {
 
-    @MockK lateinit var outboxRepository: OutboxPaymentEventJpaRepository
+    @MockK lateinit var outboxRepository: OutboxPaymentEventRepository
 
     @MockK lateinit var kafkaTemplate: KafkaTemplate<String, String>
 

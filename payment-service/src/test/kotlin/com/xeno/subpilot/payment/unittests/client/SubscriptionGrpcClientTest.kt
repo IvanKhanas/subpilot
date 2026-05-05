@@ -15,7 +15,9 @@
  */
 package com.xeno.subpilot.payment.unittests.client
 
+import com.xeno.subpilot.payment.client.GrpcRetry
 import com.xeno.subpilot.payment.client.SubscriptionGrpcClient
+import com.xeno.subpilot.payment.config.GrpcRetryProperties
 import com.xeno.subpilot.payment.exception.InvalidPlanException
 import com.xeno.subpilot.proto.subscription.v1.SubscriptionServiceGrpcKt
 import com.xeno.subpilot.proto.subscription.v1.getPlanInfoResponse
@@ -61,9 +63,14 @@ class SubscriptionGrpcClientTest {
             )
     }
 
+    private val grpcRetry =
+        GrpcRetry(
+            GrpcRetryProperties(maxAttempts = 1, initialBackoffMs = 0, backoffMultiplier = 1.0),
+        )
+
     @BeforeEach
     fun setUp() {
-        client = SubscriptionGrpcClient(stub)
+        client = SubscriptionGrpcClient(stub, grpcRetry)
     }
 
     @Test
@@ -91,20 +98,18 @@ class SubscriptionGrpcClientTest {
         caseName: String,
         status: Status,
         expectInvalidPlan: Boolean,
-    ) =
-        runTest {
-            assertEquals(true, caseName.isNotBlank())
-            coEvery { stub.getPlanInfo(any(), any()) } throws StatusException(status)
+    ) = runTest {
+        assertEquals(true, caseName.isNotBlank())
+        coEvery { stub.getPlanInfo(any(), any()) } throws StatusException(status)
 
-            if (expectInvalidPlan) {
-                assertThrows<InvalidPlanException> {
-                    client.getPlanDetails(PLAN_ID)
-                }
-            } else {
-                assertThrows<StatusException> {
-                    client.getPlanDetails(PLAN_ID)
-                }
+        if (expectInvalidPlan) {
+            assertThrows<InvalidPlanException> {
+                client.getPlanDetails(PLAN_ID)
+            }
+        } else {
+            assertThrows<StatusException> {
+                client.getPlanDetails(PLAN_ID)
             }
         }
-
+    }
 }

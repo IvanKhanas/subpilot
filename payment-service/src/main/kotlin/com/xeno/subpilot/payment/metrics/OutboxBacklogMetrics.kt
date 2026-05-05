@@ -15,7 +15,7 @@
  */
 package com.xeno.subpilot.payment.metrics
 
-import com.xeno.subpilot.payment.repository.OutboxPaymentEventJpaRepository
+import com.xeno.subpilot.payment.repository.OutboxPaymentEventRepository
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.MeterBinder
@@ -23,12 +23,13 @@ import org.springframework.stereotype.Component
 
 @Component
 class OutboxBacklogMetrics(
-    private val outboxPaymentEventJpaRepository: OutboxPaymentEventJpaRepository,
+    private val outboxPaymentEventJpaRepository: OutboxPaymentEventRepository,
 ) : MeterBinder {
 
     override fun bindTo(registry: MeterRegistry) {
-        Gauge.builder("outbox_backlog_size", outboxPaymentEventJpaRepository) { repo ->
-            repo.countByPublishedAtIsNull().toDouble()
-        }.register(registry)
+        Gauge
+            .builder("outbox_backlog_size", outboxPaymentEventJpaRepository) { repo ->
+                repo.countByPublishedAtIsNull().toDouble()
+            }.register(registry)
     }
 }

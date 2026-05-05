@@ -20,7 +20,9 @@ import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Component
 
 @Component
-class PaymentMetrics(meterRegistry: MeterRegistry) {
+class PaymentMetrics(
+    meterRegistry: MeterRegistry,
+) {
 
     val paymentsSucceeded: Counter =
         Counter.builder("payments_succeeded_total").register(meterRegistry)

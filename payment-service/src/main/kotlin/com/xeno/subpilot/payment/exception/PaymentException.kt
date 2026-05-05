@@ -17,9 +17,8 @@ package com.xeno.subpilot.payment.exception
 
 import io.grpc.Status
 
-class InvalidPlanException(
-    planId: String,
-) : PaymentException(
-        status = Status.NOT_FOUND,
-        message = planId,
-    )
+open class PaymentException(
+    val status: Status,
+    message: String,
+    cause: Throwable? = null,
+) : RuntimeException(message, cause)

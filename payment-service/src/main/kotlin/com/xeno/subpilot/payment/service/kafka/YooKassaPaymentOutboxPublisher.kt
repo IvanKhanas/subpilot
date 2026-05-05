@@ -16,7 +16,7 @@
 package com.xeno.subpilot.payment.service.kafka
 
 import com.xeno.subpilot.payment.properties.YooKassaPaymentOutboxProperties
-import com.xeno.subpilot.payment.repository.OutboxPaymentEventJpaRepository
+import com.xeno.subpilot.payment.repository.OutboxPaymentEventRepository
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -27,7 +27,7 @@ import java.time.LocalDateTime
 
 @Service
 class YooKassaPaymentOutboxPublisher(
-    private val outboxPaymentEventJpaRepository: OutboxPaymentEventJpaRepository,
+    private val outboxPaymentEventJpaRepository: OutboxPaymentEventRepository,
     private val yooKassaPaymentOutboxProperties: YooKassaPaymentOutboxProperties,
     private val kafkaTemplate: KafkaTemplate<String, String>,
     private val clock: Clock,

@@ -24,8 +24,8 @@ import com.xeno.subpilot.payment.entity.OutboxPaymentEvent
 import com.xeno.subpilot.payment.entity.Payment
 import com.xeno.subpilot.payment.entity.PaymentStatus
 import com.xeno.subpilot.payment.metrics.PaymentMetrics
-import com.xeno.subpilot.payment.repository.OutboxPaymentEventJpaRepository
-import com.xeno.subpilot.payment.repository.PaymentJpaRepository
+import com.xeno.subpilot.payment.repository.OutboxPaymentEventRepository
+import com.xeno.subpilot.payment.repository.PaymentRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import tools.jackson.databind.ObjectMapper
@@ -35,9 +35,9 @@ import java.time.LocalDateTime
 
 @Service
 class YooKassaPaymentService(
-    private val paymentJpaRepository: PaymentJpaRepository,
+    private val paymentJpaRepository: PaymentRepository,
     private val yooKassaClient: YooKassaClient,
-    private val outboxPaymentEventJpaRepository: OutboxPaymentEventJpaRepository,
+    private val outboxPaymentEventJpaRepository: OutboxPaymentEventRepository,
     private val objectMapper: ObjectMapper,
     private val clock: Clock,
     private val metrics: PaymentMetrics,
