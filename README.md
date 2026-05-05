@@ -1,8 +1,6 @@
-> **In progress: observability and administration**
-
 # SubPilot
 
-Backend for a Telegram AI chatbot with usage limits, paid subscriptions, and a cashback loyalty program. Built as five Kotlin/Spring Boot microservices communicating over gRPC and Kafka.
+Backend for a Telegram AI chatbot with usage limits, paid subscriptions, and a cashback loyalty program. Built as six Kotlin/Spring Boot microservices communicating over gRPC and Kafka, with an observability stack (Prometheus + Grafana) and Nginx as the sole public entry point.
 
 ---
 
@@ -31,8 +29,12 @@ Backend for a Telegram AI chatbot with usage limits, paid subscriptions, and a c
 | `subscription-service` | 8083 | 9091 | PostgreSQL `subscription` |
 | `payment-service` | 8084 | 9094 | PostgreSQL `payment` |
 | `loyalty-service` | 8085 | 9095 | PostgreSQL `loyalty` |
+| `admin-service` | 8086 | — | PostgreSQL `admin` |
+| `gateway-service` | 8088 | — | — |
 
 Supporting modules: `proto` (shared gRPC contracts), `migrations` (Liquibase changelogs per service), `ktlint-rules` (custom lint ruleset).
+
+Infrastructure (in `infra/`): PostgreSQL, Redis, Kafka (3-broker KRaft), Nginx, Prometheus, Grafana. Each has its own `docker-compose.yml` that the root `docker-compose.yml` includes.
 
 ---
 
@@ -40,13 +42,15 @@ Supporting modules: `proto` (shared gRPC contracts), `migrations` (Liquibase cha
 
 Users talk to the bot through Telegram. Each message goes through an access check: the user either has free quota left or a paid balance. When they run out, the bot prompts them to subscribe.
 
-Subscription plans and model request costs live entirely in `subscription-service/src/main/resources/application.yml` — no database tables. Adding a plan means editing that file and redeploying.
+Model costs and the model-to-provider mapping live in `subscription-service/src/main/resources/application.yml`. Subscription plans (name, price, request grants) live in the `subscription` PostgreSQL database — adding a plan is an SQL insert, no redeploy needed.
 
 Payment goes through YooKassa. The bot creates a checkout link; YooKassa sends a webhook when the user pays. Because a webhook call and a database write are two separate systems, the service uses a transactional outbox to guarantee nothing gets lost (details in the [Kafka section](#kafka-message-flows)).
 
 After a successful payment, `subscription-service` activates the subscription and fires an event. `loyalty-service` listens to the same event and credits cashback points. `tg-bot-service` listens for the activation event and sends the user a Telegram message.
 
 Users can spend cashback points on subscriptions. If they have enough to cover the full price, no YooKassa payment is created at all. If they only have part of the price, the points become a discount and YooKassa handles the rest.
+
+All admin operations (user management, audit log) are exposed via `admin-service` REST endpoints. `gateway-service` sits in front of it, handles JWT auth, and routes `/api/v1/**` requests. Nginx is the sole public entry point — it terminates HTTPS and proxies to the gateway.
 
 ---
 
@@ -92,7 +96,7 @@ tg-bot-service
 tg-bot-service → subscription-service.GetPlans
 ```
 
-`subscription-service` reads active plans and their request allocations from the database and returns them. Plans live entirely in the `subscription-service` PostgreSQL database (`subscription_plan` + `subscription_plan_allocation`).
+`subscription-service` reads active plans and their request allocations from the database and returns them.
 
 ### Paying with card
 
@@ -207,6 +211,8 @@ user_subscription         -- immutable purchase log: plan_id, provider, earned_r
 user_request_balance      -- mutable paid balance: (user_id, provider) → requests_remaining
 user_free_quota           -- free-tier quota per user and provider, with reset timestamp
 user_model_preference     -- preferred model per user
+subscription_plan         -- plan catalog: plan_id, provider, display_name, price, currency, active
+subscription_plan_allocation -- request grants per plan and provider
 ```
 
 `user_subscription` is append-only. Requests are credited to `user_request_balance` at activation time. Access control reads only `requests_remaining`.
@@ -225,6 +231,12 @@ user_loyalty_balance      -- user_id → points
 loyalty_transaction       -- user_id, amount, type (EARNED/SPENT), payment_id, created_at
 ```
 
+### admin (PostgreSQL)
+
+```sql
+audit_log                 -- actor, action, target_type, target_id, details (JSON), created_at
+```
+
 ---
 
 ## Configuration reference
@@ -241,13 +253,21 @@ Copy `.env.example` to `.env` and fill in the required values.
 | `SUBSCRIPTION_DB_PASSWORD` | yes | — | |
 | `PAYMENT_DB_PASSWORD` | yes | — | |
 | `LOYALTY_DB_PASSWORD` | yes | — | |
+| `ADMIN_DB_PASSWORD` | yes | — | |
 | `YOOKASSA_SHOP_ID` | yes | — | |
 | `YOOKASSA_SECRET_KEY` | yes | — | |
 | `YOOKASSA_RETURN_URL` | yes | — | URL the user lands on after paying |
-| `LOYALTY_CASHBACK_RATE` | no | `0.08` | Fraction of payment credited as points (0.08 = 8%) |
+| `ADMIN_JWT_SECRET` | yes | — | Secret for internal gateway→admin service JWTs |
+| `ADMIN_AUTH_JWT_SECRET` | yes | — | Secret for user-facing access/refresh tokens |
+| `MODERATION_CHAT_ID` | yes | — | Telegram chat ID for moderation notifications |
+| `NGINX_SERVER_NAME` | yes | — | Public domain name for Nginx TLS config |
+| `LOYALTY_CASHBACK_RATE` | no | `0.10` | Fraction of payment credited as points (0.10 = 10%) |
 | `SUBSCRIPTION_FREE_QUOTA` | no | `10` | Free requests per user per reset period |
 | `SUBSCRIPTION_FREE_QUOTA_RESET_PERIOD` | no | `7d` | Reset period, e.g. `7d`, `24h` |
 | `OPENAI_DEFAULT_MODEL` | no | `gpt-4o-mini` | Default model for new users |
+| `ADMIN_BOOTSTRAP_USERNAME` | no | — | Auto-created admin user on first startup |
+| `ADMIN_BOOTSTRAP_PASSWORD` | no | — | Password for the bootstrap admin user |
+| `GRAFANA_ADMIN_PASSWORD` | no | `admin` | Grafana web UI password |
 
 ### Subscription plans (database)
 
@@ -255,7 +275,7 @@ Plans live in two tables in the `subscription` database: `subscription_plan` and
 
 ### Model costs and providers (application.yml)
 
-Model costs and the mapping from model ID to provider are also in `subscription-service/src/main/resources/application.yml`.
+Model costs and the mapping from model ID to provider are in `subscription-service/src/main/resources/application.yml`.
 
 ```yaml
 subscription:
@@ -390,20 +410,7 @@ subscription:
     custom-7b: 1               # new
 ```
 
-Add a plan that allocates requests to the new provider:
-
-```yaml
-subscription:
-  plans:
-    custom-basic:
-      provider: custom
-      display-name: "Custom Basic - 200 requests"
-      price: 99.00
-      currency: RUB
-      allocations:
-        - provider: custom
-          requests: 200
-```
+Add a plan that allocates requests to the new provider (see [How to add a subscription plan](#how-to-add-a-subscription-plan)).
 
 **tg-bot-service** — register the provider in `AiProvider.kt` so users can select it and models under it:
 
@@ -439,29 +446,34 @@ enum class PremiumProvider(val displayName: String, val planProviderKey: String)
 cp .env.example .env
 # fill in TELEGRAM_BOT_TOKEN, OPENAI_API_KEY, REDIS_PASSWORD,
 # SUBSCRIPTION_DB_PASSWORD, PAYMENT_DB_PASSWORD, LOYALTY_DB_PASSWORD,
-# YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY, YOOKASSA_RETURN_URL,
-# ADMIN_JWT_SECRET,
-# ADMIN_AUTH_JWT_SECRET
+# ADMIN_DB_PASSWORD, YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY, YOOKASSA_RETURN_URL,
+# ADMIN_JWT_SECRET, ADMIN_AUTH_JWT_SECRET, NGINX_SERVER_NAME
 docker compose up --build
 ```
 
 Logs are written to `<service-name>.log` files in the project root.
 
-Kafka UI (browse topics and messages): `http://localhost:8090`
+| URL | What |
+|---|---|
+| `http://localhost:8090` | Kafka UI (browse topics and messages) |
+| `http://localhost:3000` | Grafana (dashboards, default password in `GRAFANA_ADMIN_PASSWORD`) |
+| `http://localhost:9090` | Prometheus (raw metrics) |
+| `https://<NGINX_SERVER_NAME>/api/v1/` | Public API via Nginx + gateway-service |
 
 ### YooKassa webhook in local development
 
 YooKassa needs a public HTTPS URL to send webhook events. For local testing, expose `payment-service` with a tunnel (e.g. `ngrok http 8084`) and set `YOOKASSA_RETURN_URL` to the tunnel URL. Configure the webhook URL in your YooKassa dashboard to point to `https://<tunnel>/webhook/payment`.
 
-### Gateway auth for web and API
+### Admin API
 
-Public admin traffic goes to `gateway-service` (`/api/v1/**`). The gateway provides its own auth endpoints and issues JWT access/refresh tokens.
+Public admin traffic goes to `gateway-service` (port 8088), which provides JWT auth endpoints and proxies admin requests to `admin-service`.
 
-Current route:
+Route prefix → service:
 
-- `/api/v1/admin/**` -> `admin-service`
+- `/api/v1/auth/**` → `admin-service` (login, refresh)
+- `/api/v1/admin/**` → `admin-service` (user management, audit log)
 
-Authorization policy in gateway:
+Authorization policy:
 
 - `GET /api/v1/admin/**` requires `admin.read` or `admin.write`
 - `POST|PUT|PATCH|DELETE /api/v1/admin/**` requires `admin.write`
@@ -495,8 +507,6 @@ curl -s 'https://<host>/api/v1/auth/refresh' \
   -H 'Content-Type: application/json' \
   -d "{\"refreshToken\":\"$REFRESH_TOKEN\"}"
 ```
-
-This flow works for both direct API clients and future web admin UI.
 
 ---
 
