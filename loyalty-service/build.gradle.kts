@@ -1,5 +1,6 @@
 plugins {
     jacoco
+    id("subpilot.jacoco-conventions")
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)

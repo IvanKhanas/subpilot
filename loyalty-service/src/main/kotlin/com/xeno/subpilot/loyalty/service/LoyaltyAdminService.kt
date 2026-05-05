@@ -35,16 +35,22 @@ class LoyaltyAdminService(
 ) {
 
     @Transactional
-    fun adjustPoints(userId: Long, delta: Long, reason: String, idempotencyKey: UUID) {
+    fun adjustPoints(
+        userId: Long,
+        delta: Long,
+        reason: String,
+        idempotencyKey: UUID,
+    ) {
         require(delta != 0L) { "delta cannot be zero" }
 
-        val inserted = loyaltyTransactionJpaRepository.insertAdjustedIfAbsent(
-            userId = userId,
-            amount = delta,
-            idempotencyKey = idempotencyKey,
-            reason = reason,
-            createdAt = LocalDateTime.now(clock),
-        )
+        val inserted =
+            loyaltyTransactionJpaRepository.insertAdjustedIfAbsent(
+                userId = userId,
+                amount = delta,
+                idempotencyKey = idempotencyKey,
+                reason = reason,
+                createdAt = LocalDateTime.now(clock),
+            )
 
         if (inserted == 0) {
             logger.atInfo {

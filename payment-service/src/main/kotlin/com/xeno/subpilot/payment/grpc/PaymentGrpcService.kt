@@ -15,7 +15,7 @@
  */
 package com.xeno.subpilot.payment.grpc
 
-import com.xeno.subpilot.payment.client.SubscriptionGrpcClient
+import com.xeno.subpilot.payment.client.SubscriptionClient
 import com.xeno.subpilot.payment.exception.InvalidPlanException
 import com.xeno.subpilot.payment.service.YooKassaPaymentService
 import com.xeno.subpilot.payment.service.kafka.YooKassaPaymentOutboxPublisher
@@ -39,7 +39,7 @@ private val logger = KotlinLogging.logger {}
 
 @GrpcService
 class PaymentGrpcService(
-    private val subscriptionGrpcClient: SubscriptionGrpcClient,
+    private val subscriptionGrpcClient: SubscriptionClient,
     private val paymentService: YooKassaPaymentService,
     private val outboxPublisher: YooKassaPaymentOutboxPublisher,
     private val ioDispatcher: CoroutineContext,

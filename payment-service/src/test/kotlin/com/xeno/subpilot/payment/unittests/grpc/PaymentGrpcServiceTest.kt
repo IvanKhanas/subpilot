@@ -15,7 +15,7 @@
  */
 package com.xeno.subpilot.payment.unittests.grpc
 
-import com.xeno.subpilot.payment.client.SubscriptionGrpcClient
+import com.xeno.subpilot.payment.client.SubscriptionClient
 import com.xeno.subpilot.payment.dto.PaymentResult
 import com.xeno.subpilot.payment.dto.PlanDetails
 import com.xeno.subpilot.payment.exception.InvalidPlanException
@@ -23,6 +23,7 @@ import com.xeno.subpilot.payment.grpc.PaymentGrpcService
 import com.xeno.subpilot.payment.service.YooKassaPaymentService
 import com.xeno.subpilot.payment.service.kafka.YooKassaPaymentOutboxPublisher
 import com.xeno.subpilot.proto.payment.v1.createPaymentRequest
+import com.xeno.subpilot.proto.payment.v1.triggerOutboxFlushRequest
 import io.grpc.Status
 import io.grpc.StatusException
 import io.mockk.coEvery
@@ -30,12 +31,17 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 
 import java.math.BigDecimal
+import java.util.stream.Stream
 
 import kotlin.test.assertEquals
 
@@ -46,7 +52,7 @@ import kotlinx.coroutines.test.runTest
 class PaymentGrpcServiceTest {
 
     @MockK
-    lateinit var subscriptionGrpcClient: SubscriptionGrpcClient
+    lateinit var subscriptionGrpcClient: SubscriptionClient
 
     @MockK
     lateinit var paymentService: YooKassaPaymentService
@@ -62,6 +68,13 @@ class PaymentGrpcServiceTest {
         const val PAYMENT_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         const val CONFIRMATION_URL = "https://yookassa.ru/checkout/payments/test"
         val PLAN = PlanDetails(price = BigDecimal("199.00"), currency = "RUB")
+
+        @JvmStatic
+        fun createPaymentFailureCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of("invalid plan", FailureType.INVALID_PLAN, Status.Code.NOT_FOUND),
+                Arguments.of("unexpected exception", FailureType.UNEXPECTED, Status.Code.INTERNAL),
+            )
     }
 
     @BeforeEach
@@ -100,33 +113,43 @@ class PaymentGrpcServiceTest {
             coVerify { subscriptionGrpcClient.getPlanDetails(PLAN_ID) }
         }
 
-    @Test
-    fun `createPayment throws StatusException with NOT_FOUND on InvalidPlanException`() =
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("createPaymentFailureCases")
+    fun `createPayment maps failures to expected gRPC status`(
+        caseName: String,
+        failureType: FailureType,
+        expectedCode: Status.Code,
+    ) =
         runTest {
-            coEvery { subscriptionGrpcClient.getPlanDetails(PLAN_ID) } throws
-                InvalidPlanException(PLAN_ID)
+            when (failureType) {
+                FailureType.INVALID_PLAN -> {
+                    coEvery { subscriptionGrpcClient.getPlanDetails(PLAN_ID) } throws
+                        InvalidPlanException(PLAN_ID)
+                }
+                FailureType.UNEXPECTED -> {
+                    coEvery { subscriptionGrpcClient.getPlanDetails(PLAN_ID) } returns PLAN
+                    every { paymentService.createPayment(any(), any(), any(), any()) } throws
+                        RuntimeException("db down")
+                }
+            }
 
             val ex =
                 assertThrows<StatusException> {
                     grpc.createPayment(request(bonusPoints = 0))
                 }
 
-            assertEquals(Status.Code.NOT_FOUND, ex.status.code)
+            assertEquals(expectedCode, ex.status.code, caseName)
         }
 
     @Test
-    fun `createPayment throws StatusException with INTERNAL on unexpected exception`() =
+    fun `triggerOutboxFlush returns flushed event count from outbox publisher`() =
         runTest {
-            coEvery { subscriptionGrpcClient.getPlanDetails(PLAN_ID) } returns PLAN
-            every { paymentService.createPayment(any(), any(), any(), any()) } throws
-                RuntimeException("db down")
+            every { outboxPublisher.publishPending() } returns 3
 
-            val ex =
-                assertThrows<StatusException> {
-                    grpc.createPayment(request(bonusPoints = 0))
-                }
+            val response = grpc.triggerOutboxFlush(triggerOutboxFlushRequest { })
 
-            assertEquals(Status.Code.INTERNAL, ex.status.code)
+            assertEquals(3, response.flushedCount)
+            verify(exactly = 1) { outboxPublisher.publishPending() }
         }
 
     private fun request(bonusPoints: Long) =
@@ -138,4 +161,9 @@ class PaymentGrpcServiceTest {
 
     private fun paymentResult() =
         PaymentResult(paymentId = PAYMENT_ID, confirmationUrl = CONFIRMATION_URL)
+
+    enum class FailureType {
+        INVALID_PLAN,
+        UNEXPECTED,
+    }
 }

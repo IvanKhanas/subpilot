@@ -15,7 +15,7 @@
  */
 package com.xeno.subpilot.loyalty.unittests.service
 
-import com.xeno.subpilot.loyalty.client.SubscriptionGrpcClient
+import com.xeno.subpilot.loyalty.client.SubscriptionClient
 import com.xeno.subpilot.loyalty.dto.SpendDenialReason
 import com.xeno.subpilot.loyalty.dto.SpendResult
 import com.xeno.subpilot.loyalty.dto.kafka.PaymentSucceededEvent
@@ -55,7 +55,7 @@ class LoyaltyServiceTest {
     lateinit var userLoyaltyBalanceJpaRepository: UserLoyaltyBalanceJpaRepository
 
     @MockK
-    lateinit var subscriptionGrpcClient: SubscriptionGrpcClient
+    lateinit var subscriptionGrpcClient: SubscriptionClient
 
     private val fixedClock: Clock =
         Clock.fixed(

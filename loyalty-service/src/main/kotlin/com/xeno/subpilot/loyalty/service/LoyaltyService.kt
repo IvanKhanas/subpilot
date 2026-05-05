@@ -15,7 +15,7 @@
  */
 package com.xeno.subpilot.loyalty.service
 
-import com.xeno.subpilot.loyalty.client.SubscriptionGrpcClient
+import com.xeno.subpilot.loyalty.client.SubscriptionClient
 import com.xeno.subpilot.loyalty.dto.SpendDenialReason
 import com.xeno.subpilot.loyalty.dto.SpendResult
 import com.xeno.subpilot.loyalty.dto.kafka.PaymentSucceededEvent
@@ -39,7 +39,7 @@ class LoyaltyService(
     private val loyaltyProperties: LoyaltyProperties,
     private val loyaltyTransactionJpaRepository: LoyaltyTransactionJpaRepository,
     private val userLoyaltyBalanceJpaRepository: UserLoyaltyBalanceJpaRepository,
-    private val subscriptionGrpcClient: SubscriptionGrpcClient,
+    private val subscriptionGrpcClient: SubscriptionClient,
     private val clock: Clock,
 ) {
 

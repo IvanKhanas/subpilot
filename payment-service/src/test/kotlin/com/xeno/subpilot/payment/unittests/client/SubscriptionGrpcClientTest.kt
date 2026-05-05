@@ -29,8 +29,12 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 
 import java.math.BigDecimal
+import java.util.stream.Stream
 
 import kotlin.test.assertEquals
 
@@ -48,6 +52,13 @@ class SubscriptionGrpcClientTest {
         const val PLAN_ID = "openai-basic"
         const val PRICE = "199.00"
         const val CURRENCY = "RUB"
+
+        @JvmStatic
+        fun grpcFailureCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of("NOT_FOUND maps to InvalidPlanException", Status.NOT_FOUND, true),
+                Arguments.of("UNAVAILABLE rethrows StatusException", Status.UNAVAILABLE, false),
+            )
     }
 
     @BeforeEach
@@ -74,23 +85,26 @@ class SubscriptionGrpcClientTest {
             assertEquals(CURRENCY, result.currency)
         }
 
-    @Test
-    fun `getPlanDetails throws InvalidPlanException on NOT_FOUND`() =
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("grpcFailureCases")
+    fun `getPlanDetails maps gRPC failures`(
+        caseName: String,
+        status: Status,
+        expectInvalidPlan: Boolean,
+    ) =
         runTest {
-            coEvery { stub.getPlanInfo(any(), any()) } throws StatusException(Status.NOT_FOUND)
+            assertEquals(true, caseName.isNotBlank())
+            coEvery { stub.getPlanInfo(any(), any()) } throws StatusException(status)
 
-            assertThrows<InvalidPlanException> {
-                client.getPlanDetails(PLAN_ID)
+            if (expectInvalidPlan) {
+                assertThrows<InvalidPlanException> {
+                    client.getPlanDetails(PLAN_ID)
+                }
+            } else {
+                assertThrows<StatusException> {
+                    client.getPlanDetails(PLAN_ID)
+                }
             }
         }
 
-    @Test
-    fun `getPlanDetails rethrows StatusException on other gRPC errors`() =
-        runTest {
-            coEvery { stub.getPlanInfo(any(), any()) } throws StatusException(Status.UNAVAILABLE)
-
-            assertThrows<StatusException> {
-                client.getPlanDetails(PLAN_ID)
-            }
-        }
 }

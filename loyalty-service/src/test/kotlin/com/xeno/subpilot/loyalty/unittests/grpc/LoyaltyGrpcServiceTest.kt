@@ -18,8 +18,11 @@ package com.xeno.subpilot.loyalty.unittests.grpc
 import com.xeno.subpilot.loyalty.dto.SpendDenialReason as ServiceSpendDenialReason
 import com.xeno.subpilot.loyalty.dto.SpendResult
 import com.xeno.subpilot.loyalty.grpc.LoyaltyGrpcService
+import com.xeno.subpilot.loyalty.service.LoyaltyAdminService
 import com.xeno.subpilot.loyalty.service.LoyaltyService
+import com.xeno.subpilot.proto.loyalty.v1.AdjustPointsResponse
 import com.xeno.subpilot.proto.loyalty.v1.SpendDenialReason
+import com.xeno.subpilot.proto.loyalty.v1.adjustPointsRequest
 import com.xeno.subpilot.proto.loyalty.v1.getBalanceRequest
 import com.xeno.subpilot.proto.loyalty.v1.spendPointsRequest
 import io.mockk.every
@@ -49,6 +52,9 @@ class LoyaltyGrpcServiceTest {
     @MockK
     lateinit var loyaltyService: LoyaltyService
 
+    @MockK
+    lateinit var loyaltyAdminService: LoyaltyAdminService
+
     private lateinit var grpc: LoyaltyGrpcService
 
     companion object {
@@ -61,6 +67,7 @@ class LoyaltyGrpcServiceTest {
         grpc =
             LoyaltyGrpcService(
                 loyaltyService = loyaltyService,
+                loyaltyAdminService = loyaltyAdminService,
                 ioDispatcher = UnconfinedTestDispatcher(),
             )
     }
@@ -120,4 +127,29 @@ class LoyaltyGrpcServiceTest {
         assertFalse(response.success)
         assertEquals(protoReason, response.denialReason)
     }
+
+    @Test
+    fun `adjustPoints delegates to LoyaltyAdminService with parsed idempotency key`() =
+        runTest {
+            val idempotencyKey = UUID.randomUUID()
+            every { loyaltyAdminService.adjustPoints(USER_ID, 50, "admin grant", idempotencyKey) } returns Unit
+
+            val response =
+                grpc.adjustPoints(
+                    adjustPointsRequest {
+                        userId = USER_ID
+                        delta = 50
+                        reason = "admin grant"
+                        this.idempotencyKey = idempotencyKey.toString()
+                    },
+                )
+
+            assertEquals(
+                AdjustPointsResponse.getDefaultInstance(),
+                response,
+            )
+            verify {
+                loyaltyAdminService.adjustPoints(USER_ID, 50, "admin grant", idempotencyKey)
+            }
+        }
 }

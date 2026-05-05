@@ -29,11 +29,16 @@ import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 
 import java.util.UUID
+import java.util.stream.Stream
 
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 @ExtendWith(MockKExtension::class)
 class YooKassaWebhookControllerTest {
@@ -68,6 +73,13 @@ class YooKassaWebhookControllerTest {
                         status = "canceled",
                     ),
             )
+
+        @JvmStatic
+        fun supportedWebhookEvents(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of("payment succeeded", succeededEvent),
+                Arguments.of("payment canceled", canceledEvent),
+            )
     }
 
     @BeforeEach
@@ -75,14 +87,14 @@ class YooKassaWebhookControllerTest {
         controller = YooKassaPaymentWebhookController(paymentService, metrics)
     }
 
-    @Test
-    fun `handleWebhook does not throw for payment succeeded event`() {
-        controller.handleWebhook(succeededEvent)
-    }
-
-    @Test
-    fun `handleWebhook does not throw for payment canceled event`() {
-        controller.handleWebhook(canceledEvent)
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("supportedWebhookEvents")
+    fun `handleWebhook does not throw for supported events`(
+        caseName: String,
+        event: YooKassaWebhookEvent,
+    ) {
+        assertTrue(caseName.isNotBlank())
+        controller.handleWebhook(event)
     }
 
     @Test
