@@ -78,7 +78,7 @@ class ProviderButtonHandlerTest {
     @ParameterizedTest(name = "supports(''{0}'') = {1}")
     @CsvSource(
         "'֎ OpenAI', true",
-        "'💎 OpenAI', true",
+        "'💎 OpenAI', false",
         "'unsupported', false",
     )
     fun `supports handles provider button texts`(

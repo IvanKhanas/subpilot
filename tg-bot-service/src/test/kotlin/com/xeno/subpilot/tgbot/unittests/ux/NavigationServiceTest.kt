@@ -21,7 +21,7 @@ import com.xeno.subpilot.tgbot.ux.NavigationService
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import io.mockk.justRun
+import io.mockk.mockk
 import io.mockk.verify
 import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
@@ -32,6 +32,8 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import org.springframework.data.redis.core.ListOperations
+import org.springframework.data.redis.core.RedisOperations
+import org.springframework.data.redis.core.SessionCallback
 import org.springframework.data.redis.core.StringRedisTemplate
 
 import java.time.Duration
@@ -69,12 +71,21 @@ class NavigationServiceTest {
 
     @Test
     fun `push stores screen name in Redis`() {
+        val redisOperations = mockk<RedisOperations<String, String>>(relaxed = true)
+        every { redisOperations.opsForList() } returns listOperations
         every { listOperations.rightPush(any(), any<String>()) } returns 1L
-        justRun { redis.expire(any(), any<Duration>()) }
+        every { redis.executePipelined(any<SessionCallback<Any?>>()) } answers
+            {
+                val callback = firstArg<SessionCallback<Any?>>()
+                @Suppress("UNCHECKED_CAST")
+                callback.execute(redisOperations as RedisOperations<Any, Any>)
+                emptyList<Any?>()
+            }
 
         service.push(chatId, BotScreen.MAIN_MENU)
 
-        verify { redis.expire(stackKey, Duration.ofMinutes(30)) }
+        verify { listOperations.rightPush(stackKey, BotScreen.MAIN_MENU.name) }
+        verify { redisOperations.expire(stackKey, Duration.ofMinutes(20)) }
     }
 
     @Test
