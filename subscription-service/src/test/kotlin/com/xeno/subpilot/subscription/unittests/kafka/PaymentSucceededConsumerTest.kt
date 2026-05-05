@@ -29,6 +29,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.slot
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -56,6 +57,8 @@ class PaymentSucceededConsumerTest {
     @MockK
     lateinit var objectMapper: ObjectMapper
 
+    private val faker = Faker()
+
     private val openaiBasicPlan =
         PlanProperties(
             provider = "openai",
@@ -69,9 +72,11 @@ class PaymentSucceededConsumerTest {
     private val metrics = SubscriptionMetrics(meterRegistry)
 
     private lateinit var consumer: PaymentSucceededConsumer
+    private var userId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         consumer =
             PaymentSucceededConsumer(
                 activationService,
@@ -90,7 +95,7 @@ class PaymentSucceededConsumerTest {
         val paymentEvent =
             PaymentSucceededEvent(
                 paymentId = UUID.randomUUID(),
-                userId = 42L,
+                userId = userId,
                 planId = "openai-basic",
                 amount = BigDecimal("199.00"),
             )
@@ -110,7 +115,7 @@ class PaymentSucceededConsumerTest {
         verify { kafkaTemplate.send("subscription_activated", """{"ok":true}""") }
 
         val notification = publishedEvent.captured as SubscriptionActivatedEvent
-        assertEquals(42L, notification.userId)
+        assertEquals(userId, notification.userId)
         assertEquals("Basic - 100 requests for OpenAI", notification.planDisplayName)
         assertEquals(1, notification.allocations.size)
         assertEquals("openai", notification.allocations[0].provider)
@@ -122,7 +127,7 @@ class PaymentSucceededConsumerTest {
         val paymentEvent =
             PaymentSucceededEvent(
                 paymentId = UUID.randomUUID(),
-                userId = 42L,
+                userId = userId,
                 planId = "openai-basic",
                 amount = BigDecimal("199.00"),
             )
@@ -145,7 +150,7 @@ class PaymentSucceededConsumerTest {
         val paymentEvent =
             PaymentSucceededEvent(
                 paymentId = UUID.randomUUID(),
-                userId = 42L,
+                userId = userId,
                 planId = "unknown-plan",
                 amount = BigDecimal("199.00"),
             )
@@ -168,11 +173,12 @@ class PaymentSucceededConsumerTest {
         val paymentEvent =
             PaymentSucceededEvent(
                 paymentId = UUID.randomUUID(),
-                userId = 42L,
+                userId = userId,
                 planId = "openai-basic",
                 amount = BigDecimal("199.00"),
             )
-        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns paymentEvent
+        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns
+            paymentEvent
         every { activationService.activate(paymentEvent) } returns true
         every { objectMapper.writeValueAsString(any()) } returns """{"ok":true}"""
 
@@ -186,11 +192,12 @@ class PaymentSucceededConsumerTest {
         val paymentEvent =
             PaymentSucceededEvent(
                 paymentId = UUID.randomUUID(),
-                userId = 42L,
+                userId = userId,
                 planId = "openai-basic",
                 amount = BigDecimal("199.00"),
             )
-        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns paymentEvent
+        every { objectMapper.readValue("event-json", PaymentSucceededEvent::class.java) } returns
+            paymentEvent
         every { activationService.activate(paymentEvent) } returns false
 
         consumer.consume("event-json")

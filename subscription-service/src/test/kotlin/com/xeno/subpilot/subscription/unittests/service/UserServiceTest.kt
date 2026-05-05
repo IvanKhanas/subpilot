@@ -27,9 +27,12 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.justRun
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 
 import java.time.Duration
 
@@ -51,6 +54,8 @@ class UserServiceTest {
 
     private lateinit var service: UserService
 
+    private val faker = Faker()
+
     private val properties =
         SubscriptionProperties(
             freeQuota = 10,
@@ -62,10 +67,11 @@ class UserServiceTest {
 
     private val meterRegistry = SimpleMeterRegistry()
     private val metrics = SubscriptionMetrics(meterRegistry)
-    private val userId = 42L
+    private var userId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         service =
             UserService(
                 subscriptionUserRepository,
@@ -100,23 +106,23 @@ class UserServiceTest {
         verify { modelPreferenceRepository.upsert(userId, "gpt-4o-mini") }
     }
 
-    @Test
-    fun `registerUser increments user_registrations_total for new user`() {
-        every { subscriptionUserRepository.insertIfAbsent(userId) } returns true
-        justRun { freeQuotaRepository.createAll(any(), any(), any(), any()) }
-        justRun { modelPreferenceRepository.upsert(any(), any()) }
+    @ParameterizedTest(name = "isNew={0} -> registrations_total={1}")
+    @CsvSource(
+        "true, 1.0",
+        "false, 0.0",
+    )
+    fun `registerUser updates user_registrations_total depending on user existence`(
+        isNew: Boolean,
+        expectedCounterValue: Double,
+    ) {
+        every { subscriptionUserRepository.insertIfAbsent(userId) } returns isNew
+        if (isNew) {
+            justRun { freeQuotaRepository.createAll(any(), any(), any(), any()) }
+            justRun { modelPreferenceRepository.upsert(any(), any()) }
+        }
 
         service.registerUser(userId)
 
-        assertEquals(1.0, meterRegistry.counter("user_registrations_total").count())
-    }
-
-    @Test
-    fun `registerUser does not increment user_registrations_total for existing user`() {
-        every { subscriptionUserRepository.insertIfAbsent(userId) } returns false
-
-        service.registerUser(userId)
-
-        assertEquals(0.0, meterRegistry.counter("user_registrations_total").count())
+        assertEquals(expectedCounterValue, meterRegistry.counter("user_registrations_total").count())
     }
 }

@@ -23,6 +23,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.justRun
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -42,6 +43,8 @@ class ModelPreferenceServiceTest {
     @MockK
     lateinit var modelPreferenceRepository: UserModelPreferenceRepository
 
+    private val faker = Faker()
+
     private lateinit var service: ModelPreferenceService
 
     private val properties =
@@ -58,10 +61,11 @@ class ModelPreferenceServiceTest {
             modelCosts = mapOf("gpt-4o" to 3, "gpt-4o-mini" to 1, "claude-3-5-sonnet" to 2),
         )
 
-    private val userId = 7L
+    private var userId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         service = ModelPreferenceService(modelPreferenceRepository, properties)
     }
 

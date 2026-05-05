@@ -22,4 +22,9 @@ interface PlanRepository {
     fun findById(planId: String): PlanProperties?
 
     fun findAllActive(): Map<String, PlanProperties>
+
+    fun create(
+        planId: String,
+        plan: PlanProperties,
+    )
 }

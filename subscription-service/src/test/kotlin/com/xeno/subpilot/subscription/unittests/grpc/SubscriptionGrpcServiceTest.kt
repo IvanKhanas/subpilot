@@ -16,21 +16,28 @@
 package com.xeno.subpilot.subscription.unittests.grpc
 
 import com.xeno.subpilot.proto.subscription.v1.DenialReason
+import com.xeno.subpilot.proto.subscription.v1.CreatePlanRequest
+import com.xeno.subpilot.proto.subscription.v1.PlanAllocation as ProtoPlanAllocation
 import com.xeno.subpilot.proto.subscription.v1.activateSubscriptionRequest
+import com.xeno.subpilot.proto.subscription.v1.blockUserRequest
 import com.xeno.subpilot.proto.subscription.v1.checkAccessRequest
 import com.xeno.subpilot.proto.subscription.v1.getBalanceRequest
 import com.xeno.subpilot.proto.subscription.v1.getModelPreferenceRequest
 import com.xeno.subpilot.proto.subscription.v1.getPlanInfoRequest
 import com.xeno.subpilot.proto.subscription.v1.getPlansRequest
+import com.xeno.subpilot.proto.subscription.v1.getUserInfoRequest
 import com.xeno.subpilot.proto.subscription.v1.refundAccessRequest
 import com.xeno.subpilot.proto.subscription.v1.registerUserRequest
 import com.xeno.subpilot.proto.subscription.v1.setModelPreferenceRequest
+import com.xeno.subpilot.proto.subscription.v1.unblockUserRequest
 import com.xeno.subpilot.subscription.dto.AccessResult
 import com.xeno.subpilot.subscription.dto.BalanceInfo
 import com.xeno.subpilot.subscription.dto.DenialReason as ServiceDenialReason
 import com.xeno.subpilot.subscription.dto.FreeProviderBalance
 import com.xeno.subpilot.subscription.dto.ModelPreferenceResult
 import com.xeno.subpilot.subscription.dto.PaidProviderBalance
+import com.xeno.subpilot.subscription.entity.SubscriptionUser
+import com.xeno.subpilot.subscription.entity.UserRole
 import com.xeno.subpilot.subscription.grpc.SubscriptionGrpcService
 import com.xeno.subpilot.subscription.properties.PlanProperties
 import com.xeno.subpilot.subscription.properties.ProviderAllocation
@@ -42,11 +49,14 @@ import com.xeno.subpilot.subscription.service.ModelPreferenceService
 import com.xeno.subpilot.subscription.service.SubscriptionActivationService
 import com.xeno.subpilot.subscription.service.UserAdminService
 import com.xeno.subpilot.subscription.service.UserService
+import io.grpc.Status
+import io.grpc.StatusException
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.justRun
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -93,6 +103,8 @@ class SubscriptionGrpcServiceTest {
     @MockK
     lateinit var planRepository: PlanRepository
 
+    private val faker = Faker()
+
     private val properties =
         SubscriptionProperties(
             freeQuota = 10,
@@ -125,9 +137,11 @@ class SubscriptionGrpcServiceTest {
         )
 
     private lateinit var service: SubscriptionGrpcService
+    private var testUserId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        testUserId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         service =
             SubscriptionGrpcService(
                 accessService,
@@ -153,13 +167,13 @@ class SubscriptionGrpcServiceTest {
     @Test
     fun `checkAccess returns allowed when access granted`() =
         runTest {
-            every { accessService.checkAndConsume(1L, "gpt-4o-mini") } returns
+            every { accessService.checkAndConsume(testUserId, "gpt-4o-mini") } returns
                 AccessResult(allowed = true, freeConsumed = 1)
 
             val response =
                 service.checkAccess(
                     checkAccessRequest {
-                        userId = 1L
+                        userId = testUserId
                         modelId =
                             "gpt-4o-mini"
                     },
@@ -172,13 +186,13 @@ class SubscriptionGrpcServiceTest {
     @Test
     fun `checkAccess returns denied with correct reason`() =
         runTest {
-            every { accessService.checkAndConsume(1L, "gpt-4o-mini") } returns
+            every { accessService.checkAndConsume(testUserId, "gpt-4o-mini") } returns
                 AccessResult(allowed = false, denialReason = ServiceDenialReason.QUOTA_EXHAUSTED)
 
             val response =
                 service.checkAccess(
                     checkAccessRequest {
-                        userId = 1L
+                        userId = testUserId
                         modelId =
                             "gpt-4o-mini"
                     },
@@ -205,7 +219,7 @@ class SubscriptionGrpcServiceTest {
         val response =
             service.checkAccess(
                 checkAccessRequest {
-                    userId = 1L
+                    userId = testUserId
                     modelId = "gpt-4o-mini"
                 },
             )
@@ -223,7 +237,7 @@ class SubscriptionGrpcServiceTest {
             val response =
                 service.checkAccess(
                     checkAccessRequest {
-                        userId = 1L
+                        userId = testUserId
                         modelId =
                             "gpt-4o-mini"
                     },
@@ -235,9 +249,9 @@ class SubscriptionGrpcServiceTest {
     @Test
     fun `registerUser returns isNew and freeQuota from service and properties`() =
         runTest {
-            every { userService.registerUser(1L) } returns true
+            every { userService.registerUser(testUserId) } returns true
 
-            val response = service.registerUser(registerUserRequest { userId = 1L })
+            val response = service.registerUser(registerUserRequest { userId = testUserId })
 
             assertTrue(response.isNew)
             assertEquals(10, response.freeQuota)
@@ -247,9 +261,9 @@ class SubscriptionGrpcServiceTest {
     @Test
     fun `registerUser returns isNew=false for existing user`() =
         runTest {
-            every { userService.registerUser(1L) } returns false
+            every { userService.registerUser(testUserId) } returns false
 
-            val response = service.registerUser(registerUserRequest { userId = 1L })
+            val response = service.registerUser(registerUserRequest { userId = testUserId })
 
             assertFalse(response.isNew)
         }
@@ -257,9 +271,9 @@ class SubscriptionGrpcServiceTest {
     @Test
     fun `getModelPreference returns modelId when preference is set`() =
         runTest {
-            every { modelPreferenceService.getModelPreference(1L) } returns "gpt-4o"
+            every { modelPreferenceService.getModelPreference(testUserId) } returns "gpt-4o"
 
-            val response = service.getModelPreference(getModelPreferenceRequest { userId = 1L })
+            val response = service.getModelPreference(getModelPreferenceRequest { userId = testUserId })
 
             assertEquals("gpt-4o", response.modelId)
         }
@@ -267,9 +281,9 @@ class SubscriptionGrpcServiceTest {
     @Test
     fun `getModelPreference returns empty modelId when preference is absent`() =
         runTest {
-            every { modelPreferenceService.getModelPreference(1L) } returns null
+            every { modelPreferenceService.getModelPreference(testUserId) } returns null
 
-            val response = service.getModelPreference(getModelPreferenceRequest { userId = 1L })
+            val response = service.getModelPreference(getModelPreferenceRequest { userId = testUserId })
 
             assertEquals("", response.modelId)
         }
@@ -277,7 +291,7 @@ class SubscriptionGrpcServiceTest {
     @Test
     fun `setModelPreference returns providerChanged from service`() =
         runTest {
-            every { modelPreferenceService.setModelPreference(1L, "gpt-4o") } returns
+            every { modelPreferenceService.setModelPreference(testUserId, "gpt-4o") } returns
                 ModelPreferenceResult(
                     providerChanged = true,
                     modelCost = 3,
@@ -287,7 +301,7 @@ class SubscriptionGrpcServiceTest {
             val response =
                 service.setModelPreference(
                     setModelPreferenceRequest {
-                        userId = 1L
+                        userId = testUserId
                         modelId =
                             "gpt-4o"
                     },
@@ -301,18 +315,18 @@ class SubscriptionGrpcServiceTest {
     @Test
     fun `refundAccess delegates to accessService`() =
         runTest {
-            justRun { accessService.refund(1L, "gpt-4o-mini", 1, 0) }
+            justRun { accessService.refund(testUserId, "gpt-4o-mini", 1, 0) }
 
             service.refundAccess(
                 refundAccessRequest {
-                    userId = 1L
+                    userId = testUserId
                     modelId = "gpt-4o-mini"
                     freeConsumed = 1
                     paidConsumed = 0
                 },
             )
 
-            verify { accessService.refund(1L, "gpt-4o-mini", 1, 0) }
+            verify { accessService.refund(testUserId, "gpt-4o-mini", 1, 0) }
         }
 
     @Test
@@ -348,18 +362,18 @@ class SubscriptionGrpcServiceTest {
     fun `getPlanInfo throws NOT_FOUND for unknown plan`() =
         runTest {
             val ex =
-                assertThrows<io.grpc.StatusException> {
+                assertThrows<StatusException> {
                     service.getPlanInfo(getPlanInfoRequest { planId = "unknown-plan" })
                 }
 
-            assertEquals(io.grpc.Status.Code.NOT_FOUND, ex.status.code)
+            assertEquals(Status.Code.NOT_FOUND, ex.status.code)
         }
 
     @Test
     fun `getBalance maps free and paid balances to proto response`() =
         runTest {
             val resetAt = LocalDateTime.of(2026, 4, 21, 10, 0, 0)
-            every { balanceService.getBalance(1L) } returns
+            every { balanceService.getBalance(testUserId) } returns
                 BalanceInfo(
                     freeBalances =
                         listOf(
@@ -375,7 +389,7 @@ class SubscriptionGrpcServiceTest {
                         ),
                 )
 
-            val response = service.getBalance(getBalanceRequest { userId = 1L })
+            val response = service.getBalance(getBalanceRequest { userId = testUserId })
 
             assertEquals(1, response.freeBalancesCount)
             assertEquals("openai", response.freeBalancesList[0].provider)
@@ -391,19 +405,141 @@ class SubscriptionGrpcServiceTest {
     fun `activateSubscription delegates to activation service with parsed UUID`() =
         runTest {
             val idempotencyKey = UUID.randomUUID()
-            every { activationService.activateDirect(1L, "openai-basic", idempotencyKey) } returns
+            every { activationService.activateDirect(testUserId, "openai-basic", idempotencyKey) } returns
                 true
 
             val response =
                 service.activateSubscription(
                     activateSubscriptionRequest {
-                        userId = 1L
+                        userId = testUserId
                         planId = "openai-basic"
                         this.idempotencyKey = idempotencyKey.toString()
                     },
                 )
 
             assertNotNull(response)
-            verify { activationService.activateDirect(1L, "openai-basic", idempotencyKey) }
+            verify { activationService.activateDirect(testUserId, "openai-basic", idempotencyKey) }
+        }
+
+    @Test
+    fun `getUserInfo returns found false when user does not exist`() =
+        runTest {
+            every { userAdminService.getUserInfo(testUserId) } returns null
+
+            val response = service.getUserInfo(getUserInfoRequest { userId = testUserId })
+
+            assertFalse(response.found)
+        }
+
+    @Test
+    fun `getUserInfo maps user fields when user exists`() =
+        runTest {
+            val user =
+                SubscriptionUser(
+                    userId = testUserId,
+                    registeredAt = java.time.Instant.ofEpochSecond(1_700_000_000L),
+                    blocked = true,
+                    role = UserRole.ADMIN,
+                )
+            every { userAdminService.getUserInfo(testUserId) } returns user
+
+            val response = service.getUserInfo(getUserInfoRequest { userId = testUserId })
+
+            assertTrue(response.found)
+            assertTrue(response.blocked)
+            assertEquals("ADMIN", response.role)
+            assertEquals(1_700_000_000L, response.registeredAtEpoch)
+        }
+
+    @Test
+    fun `blockUser delegates to UserAdminService`() =
+        runTest {
+            every { userAdminService.blockUser(testUserId) } returns Unit
+
+            service.blockUser(blockUserRequest { userId = testUserId })
+
+            verify(exactly = 1) { userAdminService.blockUser(testUserId) }
+        }
+
+    @Test
+    fun `blockUser maps service failure to NOT_FOUND status`() =
+        runTest {
+            every { userAdminService.blockUser(testUserId) } throws IllegalArgumentException("missing")
+
+            val ex =
+                assertThrows<StatusException> {
+                    service.blockUser(blockUserRequest { userId = testUserId })
+                }
+
+            assertEquals(Status.Code.NOT_FOUND, ex.status.code)
+        }
+
+    @Test
+    fun `unblockUser delegates to UserAdminService`() =
+        runTest {
+            every { userAdminService.unblockUser(testUserId) } returns Unit
+
+            service.unblockUser(unblockUserRequest { userId = testUserId })
+
+            verify(exactly = 1) { userAdminService.unblockUser(testUserId) }
+        }
+
+    @Test
+    fun `unblockUser maps service failure to NOT_FOUND status`() =
+        runTest {
+            every { userAdminService.unblockUser(testUserId) } throws IllegalArgumentException("missing")
+
+            val ex =
+                assertThrows<StatusException> {
+                    service.unblockUser(unblockUserRequest { userId = testUserId })
+                }
+
+            assertEquals(Status.Code.NOT_FOUND, ex.status.code)
+        }
+
+    @Test
+    fun `createPlan maps request and delegates to PlanRepository`() =
+        runTest {
+            every { planRepository.create(any(), any()) } returns Unit
+
+            service.createPlan(
+                CreatePlanRequest
+                    .newBuilder()
+                    .setPlanId("openai-pro")
+                    .setProvider("openai")
+                    .setDisplayName("OpenAI PRO")
+                    .setPrice("599.00")
+                    .setCurrency("RUB")
+                    .addAllocations(
+                        ProtoPlanAllocation
+                            .newBuilder()
+                            .setProvider("openai")
+                            .setRequests(300)
+                            .build(),
+                    ).addAllocations(
+                        ProtoPlanAllocation
+                            .newBuilder()
+                            .setProvider("anthropic")
+                            .setRequests(100)
+                            .build(),
+                    ).build(),
+            )
+
+            verify(exactly = 1) {
+                planRepository.create(
+                    "openai-pro",
+                    PlanProperties(
+                        provider = "openai",
+                        displayName = "OpenAI PRO",
+                        price = BigDecimal("599.00"),
+                        currency = "RUB",
+                        allocations =
+                            listOf(
+                                ProviderAllocation(provider = "openai", requests = 300),
+                                ProviderAllocation(provider = "anthropic", requests = 100),
+                            ),
+                    ),
+                )
+            }
         }
 }

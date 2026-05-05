@@ -20,7 +20,9 @@ import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Component
 
 @Component
-class SubscriptionMetrics(meterRegistry: MeterRegistry) {
+class SubscriptionMetrics(
+    meterRegistry: MeterRegistry,
+) {
 
     val subscriptionActivations: Counter =
         Counter.builder("subscription_activations_total").register(meterRegistry)

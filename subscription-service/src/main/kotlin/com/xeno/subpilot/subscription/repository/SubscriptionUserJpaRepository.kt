@@ -35,5 +35,8 @@ interface SubscriptionUserJpaRepository : JpaRepository<SubscriptionUser, Long> 
 
     @Modifying
     @Query("UPDATE SubscriptionUser u SET u.blocked = :blocked WHERE u.userId = :userId")
-    fun setBlocked(userId: Long, blocked: Boolean): Int
+    fun setBlocked(
+        userId: Long,
+        blocked: Boolean,
+    ): Int
 }

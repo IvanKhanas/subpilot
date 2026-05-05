@@ -18,6 +18,7 @@ service SubscriptionService {
   rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
   rpc BlockUser(BlockUserRequest) returns (BlockUserResponse);
   rpc UnblockUser(UnblockUserRequest) returns (UnblockUserResponse);
+  rpc CreatePlan(CreatePlanRequest) returns (CreatePlanResponse);
 }
 
 message CheckAccessRequest {
@@ -152,3 +153,14 @@ message UnblockUserRequest {
 }
 
 message UnblockUserResponse {}
+
+message CreatePlanRequest {
+  string plan_id = 1;
+  string provider = 2;
+  string display_name = 3;
+  string price = 4;
+  string currency = 5;
+  repeated PlanAllocation allocations = 6;
+}
+
+message CreatePlanResponse {}

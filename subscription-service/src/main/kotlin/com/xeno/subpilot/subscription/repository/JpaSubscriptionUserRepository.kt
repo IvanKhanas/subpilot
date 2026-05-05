@@ -28,7 +28,10 @@ class JpaSubscriptionUserRepository(
 
     override fun insertIfAbsent(userId: Long): Boolean = repository.insertIfAbsent(userId) > 0
 
-    override fun setBlocked(userId: Long, blocked: Boolean) {
+    override fun setBlocked(
+        userId: Long,
+        blocked: Boolean,
+    ) {
         repository.setBlocked(userId, blocked)
     }
 }

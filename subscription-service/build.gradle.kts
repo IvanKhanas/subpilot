@@ -1,6 +1,7 @@
 plugins {
     java
     jacoco
+    id("subpilot.jacoco-conventions")
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
@@ -36,5 +37,7 @@ dependencies {
     testImplementation(libs.testcontainers)
     testImplementation(libs.testcontainers.junit5)
     testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.kafka)
+    testImplementation(libs.springmockk)
     testRuntimeOnly(libs.junit.platform.launcher)
 }

@@ -21,6 +21,8 @@ import com.xeno.subpilot.proto.subscription.v1.BlockUserRequest
 import com.xeno.subpilot.proto.subscription.v1.BlockUserResponse
 import com.xeno.subpilot.proto.subscription.v1.CheckAccessRequest
 import com.xeno.subpilot.proto.subscription.v1.CheckAccessResponse
+import com.xeno.subpilot.proto.subscription.v1.CreatePlanRequest
+import com.xeno.subpilot.proto.subscription.v1.CreatePlanResponse
 import com.xeno.subpilot.proto.subscription.v1.DenialReason
 import com.xeno.subpilot.proto.subscription.v1.GetBalanceRequest
 import com.xeno.subpilot.proto.subscription.v1.GetBalanceResponse
@@ -47,6 +49,7 @@ import com.xeno.subpilot.proto.subscription.v1.UnblockUserResponse
 import com.xeno.subpilot.proto.subscription.v1.activateSubscriptionResponse
 import com.xeno.subpilot.proto.subscription.v1.blockUserResponse
 import com.xeno.subpilot.proto.subscription.v1.checkAccessResponse
+import com.xeno.subpilot.proto.subscription.v1.createPlanResponse
 import com.xeno.subpilot.proto.subscription.v1.getModelPreferenceResponse
 import com.xeno.subpilot.proto.subscription.v1.getPlanInfoResponse
 import com.xeno.subpilot.proto.subscription.v1.getUserInfoResponse
@@ -58,6 +61,7 @@ import com.xeno.subpilot.subscription.dto.DenialReason as ServiceDenialReason
 import com.xeno.subpilot.subscription.dto.FreeProviderBalance as ServiceFreeProviderBalance
 import com.xeno.subpilot.subscription.dto.PaidProviderBalance as ServicePaidProviderBalance
 import com.xeno.subpilot.subscription.properties.PlanProperties
+import com.xeno.subpilot.subscription.properties.ProviderAllocation
 import com.xeno.subpilot.subscription.properties.SubscriptionProperties
 import com.xeno.subpilot.subscription.repository.PlanRepository
 import com.xeno.subpilot.subscription.service.AccessService
@@ -71,6 +75,7 @@ import io.grpc.Status
 import io.grpc.StatusException
 import org.springframework.grpc.server.service.GrpcService
 
+import java.math.BigDecimal
 import java.time.ZoneOffset
 import java.util.UUID
 
@@ -289,7 +294,11 @@ class SubscriptionGrpcService(
         }
         withContext(ioDispatcher) {
             runCatching { userAdminService.blockUser(request.userId) }
-                .onFailure { throw StatusException(Status.NOT_FOUND.withDescription("User ${request.userId} not found")) }
+                .onFailure {
+                    throw StatusException(
+                        Status.NOT_FOUND.withDescription("User ${request.userId} not found"),
+                    )
+                }
         }
         return blockUserResponse {}
     }
@@ -301,9 +310,40 @@ class SubscriptionGrpcService(
         }
         withContext(ioDispatcher) {
             runCatching { userAdminService.unblockUser(request.userId) }
-                .onFailure { throw StatusException(Status.NOT_FOUND.withDescription("User ${request.userId} not found")) }
+                .onFailure {
+                    throw StatusException(
+                        Status.NOT_FOUND.withDescription("User ${request.userId} not found"),
+                    )
+                }
         }
         return unblockUserResponse {}
+    }
+
+    override suspend fun createPlan(request: CreatePlanRequest): CreatePlanResponse {
+        logger.atInfo {
+            message = "grpc_create_plan"
+            payload = mapOf("plan_id" to request.planId)
+        }
+        withContext(ioDispatcher) {
+            planRepository.create(
+                planId = request.planId,
+                plan =
+                    PlanProperties(
+                        provider = request.provider,
+                        displayName = request.displayName,
+                        price = BigDecimal(request.price),
+                        currency = request.currency,
+                        allocations =
+                            request.allocationsList.map {
+                                ProviderAllocation(
+                                    it.provider,
+                                    it.requests,
+                                )
+                            },
+                    ),
+            )
+        }
+        return createPlanResponse {}
     }
 
     private fun freeBalanceToProto(balance: ServiceFreeProviderBalance) =
