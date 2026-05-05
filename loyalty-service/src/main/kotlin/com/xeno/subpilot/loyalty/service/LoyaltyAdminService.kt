@@ -15,8 +15,8 @@
  */
 package com.xeno.subpilot.loyalty.service
 
-import com.xeno.subpilot.loyalty.repository.LoyaltyTransactionJpaRepository
-import com.xeno.subpilot.loyalty.repository.UserLoyaltyBalanceJpaRepository
+import com.xeno.subpilot.loyalty.repository.LoyaltyTransactionRepository
+import com.xeno.subpilot.loyalty.repository.UserLoyaltyBalanceRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -29,8 +29,8 @@ private val logger = KotlinLogging.logger {}
 
 @Service
 class LoyaltyAdminService(
-    private val loyaltyTransactionJpaRepository: LoyaltyTransactionJpaRepository,
-    private val userLoyaltyBalanceJpaRepository: UserLoyaltyBalanceJpaRepository,
+    private val loyaltyTransactionJpaRepository: LoyaltyTransactionRepository,
+    private val userLoyaltyBalanceJpaRepository: UserLoyaltyBalanceRepository,
     private val clock: Clock,
 ) {
 

@@ -132,7 +132,15 @@ class LoyaltyGrpcServiceTest {
     fun `adjustPoints delegates to LoyaltyAdminService with parsed idempotency key`() =
         runTest {
             val idempotencyKey = UUID.randomUUID()
-            every { loyaltyAdminService.adjustPoints(USER_ID, 50, "admin grant", idempotencyKey) } returns Unit
+            every {
+                loyaltyAdminService.adjustPoints(
+                    USER_ID,
+                    50,
+                    "admin grant",
+                    idempotencyKey,
+                )
+            } returns
+                Unit
 
             val response =
                 grpc.adjustPoints(
