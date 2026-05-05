@@ -29,9 +29,12 @@ import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import java.util.stream.Stream
+import kotlin.test.assertEquals
 
 import kotlinx.coroutines.test.runTest
 
@@ -55,14 +58,13 @@ class ChooseProviderTextButtonHandlerTest {
         handler = ChooseProviderTextButtonHandler(navigationService, screenRenderer)
     }
 
-    @Test
-    fun `supports returns true for choose model button text`() {
-        assertTrue(handler.supports(BotButtons.BTN_CHOOSE_MODEL))
-    }
-
-    @Test
-    fun `supports returns false for other text`() {
-        assertFalse(handler.supports("something else"))
+    @ParameterizedTest(name = "supports(''{0}'')={1}")
+    @MethodSource("supportsCases")
+    fun `supports handles choose provider button text`(
+        text: String,
+        expected: Boolean,
+    ) {
+        assertEquals(expected, handler.supports(text))
     }
 
     @Test
@@ -80,4 +82,13 @@ class ChooseProviderTextButtonHandlerTest {
 
             verify { screenRenderer.render(chatId, BotScreen.PROVIDER_MENU) }
         }
+
+    companion object {
+        @JvmStatic
+        fun supportsCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of(BotButtons.BTN_CHOOSE_MODEL, true),
+                Arguments.of("something else", false),
+            )
+    }
 }

@@ -34,11 +34,17 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.slot
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 
 import kotlinx.coroutines.test.runTest
+import java.util.stream.Stream
+import kotlin.test.assertTrue
 
 @ExtendWith(MockKExtension::class)
 class DefaultMessageHandlerTest {
@@ -52,12 +58,19 @@ class DefaultMessageHandlerTest {
     @MockK
     lateinit var waitingIndicator: AIResponseWaitingIndicator
 
+    private val faker = Faker()
+
     private lateinit var handler: DefaultMessageHandler
+    private var chatId: Long = 0L
+    private var userId: Long = 0L
 
     private val blockSlot = slot<suspend () -> ProcessMessageResponse>()
+    private val inputText = "Hello"
 
     @BeforeEach
     fun setUp() {
+        chatId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         handler = DefaultMessageHandler(telegramClient, chatClient, waitingIndicator)
     }
 
@@ -77,10 +90,10 @@ class DefaultMessageHandlerTest {
     @Test
     fun `forwards message to chat service and sends response to user`() =
         runTest {
-            val message = Message(chat = Chat(id = 42), from = User(id = 7), text = "Hello")
+            val message = Message(chat = Chat(id = chatId), from = User(id = userId), text = inputText)
             coEvery { waitingIndicator.wrap(any(), capture(blockSlot)) } coAnswers
                 { blockSlot.captured() }
-            coEvery { chatClient.processMessage(7L, 42L, "Hello") } returns
+            coEvery { chatClient.processMessage(userId, chatId, inputText) } returns
                 successResponse("AI response")
             every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
 
@@ -88,7 +101,7 @@ class DefaultMessageHandlerTest {
 
             verify(exactly = 1) {
                 telegramClient.sendMessage(
-                    chatId = 42,
+                    chatId = chatId,
                     text = "AI response",
                     replyMarkup = null,
                     parseMode = "HTML",
@@ -99,10 +112,10 @@ class DefaultMessageHandlerTest {
     @Test
     fun `sends AI unavailable response when chat service throws ChatServiceException`() =
         runTest {
-            val message = Message(chat = Chat(id = 42), from = User(id = 7), text = "Hello")
+            val message = Message(chat = Chat(id = chatId), from = User(id = userId), text = inputText)
             coEvery { waitingIndicator.wrap(any(), capture(blockSlot)) } coAnswers
                 { blockSlot.captured() }
-            coEvery { chatClient.processMessage(7L, 42L, "Hello") } throws
+            coEvery { chatClient.processMessage(userId, chatId, inputText) } throws
                 ChatServiceException("unavailable", RuntimeException())
             every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
 
@@ -110,28 +123,34 @@ class DefaultMessageHandlerTest {
 
             verify(exactly = 1) {
                 telegramClient.sendMessage(
-                    chatId = 42,
+                    chatId = chatId,
                     text = BotResponses.AI_UNAVAILABLE_RESPONSE.text,
                 )
             }
         }
 
-    @Test
-    fun `sends quota exceeded response when access denied with QUOTA_EXHAUSTED`() =
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("simpleDeniedCases")
+    fun `sends mapped response for simple denial reasons`(
+        caseName: String,
+        denialReason: DenialReason,
+        expectedText: String,
+    ) =
         runTest {
-            val message = Message(chat = Chat(id = 42), from = User(id = 7), text = "Hello")
+            assertTrue(caseName.isNotBlank())
+            val message = Message(chat = Chat(id = chatId), from = User(id = userId), text = inputText)
             coEvery { waitingIndicator.wrap(any(), capture(blockSlot)) } coAnswers
                 { blockSlot.captured() }
-            coEvery { chatClient.processMessage(7L, 42L, "Hello") } returns
-                deniedResponse(DenialReason.QUOTA_EXHAUSTED)
+            coEvery { chatClient.processMessage(userId, chatId, inputText) } returns
+                deniedResponse(denialReason)
             every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
 
             handler.handle(message)
 
             verify(exactly = 1) {
                 telegramClient.sendMessage(
-                    chatId = 42,
-                    text = BotResponses.QUOTA_EXCEEDED_RESPONSE.text,
+                    chatId = chatId,
+                    text = expectedText,
                 )
             }
         }
@@ -139,10 +158,10 @@ class DefaultMessageHandlerTest {
     @Test
     fun `sends no subscription response with model name when access denied with NO_SUBSCRIPTION`() =
         runTest {
-            val message = Message(chat = Chat(id = 42), from = User(id = 7), text = "Hello")
+            val message = Message(chat = Chat(id = chatId), from = User(id = userId), text = inputText)
             coEvery { waitingIndicator.wrap(any(), capture(blockSlot)) } coAnswers
                 { blockSlot.captured() }
-            coEvery { chatClient.processMessage(7L, 42L, "Hello") } returns
+            coEvery { chatClient.processMessage(userId, chatId, inputText) } returns
                 deniedResponse(DenialReason.NO_SUBSCRIPTION, modelId = "gpt-4o-mini")
             every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
 
@@ -152,7 +171,7 @@ class DefaultMessageHandlerTest {
             val provider = AiProvider.findProviderByModelId("gpt-4o-mini")!!
             verify(exactly = 1) {
                 telegramClient.sendMessage(
-                    chatId = 42,
+                    chatId = chatId,
                     text =
                         BotResponses.NO_SUBSCRIPTION_RESPONSE.format(
                             0,
@@ -164,30 +183,14 @@ class DefaultMessageHandlerTest {
             }
         }
 
-    @Test
-    fun `sends access blocked response when access denied with BLOCKED`() =
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("invalidMessageCases")
+    fun `ignores invalid messages`(
+        caseName: String,
+        message: Message,
+    ) =
         runTest {
-            val message = Message(chat = Chat(id = 42), from = User(id = 7), text = "Hello")
-            coEvery { waitingIndicator.wrap(any(), capture(blockSlot)) } coAnswers
-                { blockSlot.captured() }
-            coEvery { chatClient.processMessage(7L, 42L, "Hello") } returns
-                deniedResponse(DenialReason.BLOCKED)
-            every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
-
-            handler.handle(message)
-
-            verify(exactly = 1) {
-                telegramClient.sendMessage(
-                    chatId = 42,
-                    text = BotResponses.ACCESS_BLOCKED_RESPONSE.text,
-                )
-            }
-        }
-
-    @Test
-    fun `ignores message without text`() =
-        runTest {
-            val message = Message(chat = Chat(id = 42), from = User(id = 7), text = null)
+            assertTrue(caseName.isNotBlank())
 
             handler.handle(message)
 
@@ -195,14 +198,33 @@ class DefaultMessageHandlerTest {
             coVerify(exactly = 0) { chatClient.processMessage(any(), any(), any()) }
         }
 
-    @Test
-    fun `ignores message without from user`() =
-        runTest {
-            val message = Message(chat = Chat(id = 42), from = null, text = "Hello")
+    companion object {
+        @JvmStatic
+        fun simpleDeniedCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of(
+                    "quota exhausted",
+                    DenialReason.QUOTA_EXHAUSTED,
+                    BotResponses.QUOTA_EXCEEDED_RESPONSE.text,
+                ),
+                Arguments.of(
+                    "access blocked",
+                    DenialReason.BLOCKED,
+                    BotResponses.ACCESS_BLOCKED_RESPONSE.text,
+                ),
+            )
 
-            handler.handle(message)
-
-            verify(exactly = 0) { telegramClient.sendMessage(any(), any(), any(), any()) }
-            coVerify(exactly = 0) { chatClient.processMessage(any(), any(), any()) }
-        }
+        @JvmStatic
+        fun invalidMessageCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of(
+                    "message without text",
+                    Message(chat = Chat(id = 1L), from = User(id = 2L), text = null),
+                ),
+                Arguments.of(
+                    "message without from",
+                    Message(chat = Chat(id = 1L), from = null, text = "Hello"),
+                ),
+            )
+    }
 }

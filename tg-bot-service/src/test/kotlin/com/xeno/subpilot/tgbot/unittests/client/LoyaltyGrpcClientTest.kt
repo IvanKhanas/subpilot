@@ -29,6 +29,7 @@ import io.grpc.StatusException
 import io.mockk.coEvery
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -49,10 +50,14 @@ class LoyaltyGrpcClientTest {
     @MockK(relaxed = true)
     lateinit var stub: LoyaltyServiceGrpcKt.LoyaltyServiceCoroutineStub
 
+    private val faker = Faker()
+
     private lateinit var client: LoyaltyGrpcClient
+    private var userId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         client =
             LoyaltyGrpcClient(
                 stub = stub,
@@ -71,7 +76,7 @@ class LoyaltyGrpcClientTest {
     fun `getBalance returns points from grpc response`() {
         coEvery { stub.getBalance(any(), any()) } returns getBalanceResponse { points = 345 }
 
-        val result = runBlocking { client.getBalance(1L) }
+        val result = runBlocking { client.getBalance(userId) }
 
         assertEquals(345L, result)
     }
@@ -81,7 +86,7 @@ class LoyaltyGrpcClientTest {
         coEvery { stub.getBalance(any(), any()) } throws StatusException(Status.UNAVAILABLE)
 
         assertThrows<LoyaltyServiceException> {
-            runBlocking { client.getBalance(1L) }
+            runBlocking { client.getBalance(userId) }
         }
     }
 
@@ -90,7 +95,7 @@ class LoyaltyGrpcClientTest {
         coEvery { stub.spendPoints(any(), any()) } returns
             SpendPointsResponse.newBuilder().setSuccess(true).build()
 
-        val result = runBlocking { client.spend(1L, "openai-basic", UUID.randomUUID()) }
+        val result = runBlocking { client.spend(userId, "openai-basic", UUID.randomUUID()) }
 
         assertIs<SpendResult.Success>(result)
     }
@@ -112,7 +117,7 @@ class LoyaltyGrpcClientTest {
                 .setDenialReason(protoReason)
                 .build()
 
-        val result = runBlocking { client.spend(1L, "openai-basic", UUID.randomUUID()) }
+        val result = runBlocking { client.spend(userId, "openai-basic", UUID.randomUUID()) }
 
         val denied = assertIs<SpendResult.Denied>(result)
         assertEquals(expectedReasonName, denied.reason.name)
@@ -123,7 +128,7 @@ class LoyaltyGrpcClientTest {
         coEvery { stub.spendPoints(any(), any()) } throws StatusException(Status.UNAVAILABLE)
 
         assertThrows<LoyaltyServiceException> {
-            runBlocking { client.spend(1L, "openai-basic", UUID.randomUUID()) }
+            runBlocking { client.spend(userId, "openai-basic", UUID.randomUUID()) }
         }
     }
 }

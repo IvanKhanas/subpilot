@@ -15,7 +15,9 @@
  */
 package com.xeno.subpilot.chat.grpc
 
+import com.xeno.subpilot.chat.client.ModerationGrpcClient
 import com.xeno.subpilot.chat.client.OpenAiChatClient
+import com.xeno.subpilot.chat.client.OpenAiModerationClient
 import com.xeno.subpilot.chat.client.SubscriptionGrpcClient
 import com.xeno.subpilot.chat.metrics.ChatMetrics
 import com.xeno.subpilot.chat.service.ChatHistoryService
@@ -32,6 +34,8 @@ import org.springframework.grpc.server.service.GrpcService
 
 import kotlin.coroutines.CoroutineContext
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private val logger = KotlinLogging.logger {}
@@ -41,6 +45,8 @@ class ChatServiceGrpc(
     private val openAiChatClient: OpenAiChatClient,
     private val chatHistoryService: ChatHistoryService,
     private val subscriptionGrpcClient: SubscriptionGrpcClient,
+    private val moderationClient: OpenAiModerationClient,
+    private val moderationGrpcClient: ModerationGrpcClient,
     private val ioDispatcher: CoroutineContext,
     private val metrics: ChatMetrics,
 ) : ChatServiceGrpcKt.ChatServiceCoroutineImplBase() {
@@ -51,6 +57,8 @@ class ChatServiceGrpc(
             payload = mapOf("user_id" to request.userId, "chat_id" to request.chatId)
         }
 
+        checkModeration(request)
+
         val model = subscriptionGrpcClient.getModelPreference(request.userId)
         val access = subscriptionGrpcClient.checkAccess(request.userId, model)
 
@@ -59,6 +67,35 @@ class ChatServiceGrpc(
         }
 
         return generateAndSaveAiResponse(request, model, access)
+    }
+
+    private fun checkModeration(request: ProcessMessageRequest) {
+        CoroutineScope(ioDispatcher).launch {
+            val categories =
+                runCatching { moderationClient.flaggedCategories(request.text) }
+                    .onFailure { ex ->
+                        logger.atWarn {
+                            message = "moderation_check_failed"
+                            cause = ex
+                            payload = mapOf("user_id" to request.userId)
+                        }
+                    }.getOrDefault(emptyList())
+            if (categories.isEmpty()) return@launch
+            runCatching {
+                moderationGrpcClient.notifyFlagged(
+                    userId = request.userId,
+                    chatId = request.chatId,
+                    promptText = request.text,
+                    categories = categories,
+                )
+            }.onFailure { ex ->
+                logger.atWarn {
+                    message = "moderation_notify_failed"
+                    cause = ex
+                    payload = mapOf("user_id" to request.userId)
+                }
+            }
+        }
     }
 
     private fun buildDenialResponse(

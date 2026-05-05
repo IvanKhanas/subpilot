@@ -35,12 +35,15 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.justRun
 import io.mockk.slot
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 
 import kotlin.test.assertContains
-import kotlin.test.assertFalse
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 import kotlinx.coroutines.runBlocking
@@ -57,45 +60,57 @@ class ProviderButtonHandlerTest {
     @MockK
     lateinit var navigationService: NavigationService
 
+    private val faker = Faker()
+
     private lateinit var handler: ProviderButtonHandler
+    private var chatId: Long = 0L
+    private var sentMessageId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        chatId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        sentMessageId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         handler = ProviderButtonHandler(telegramClient, subscriptionClient, navigationService)
-        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns 1L
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns sentMessageId
         justRun { navigationService.push(any(), any()) }
     }
 
-    @Test
-    fun `supports returns true for ai and premium provider buttons`() {
-        assertTrue(handler.supports(AiProvider.OPENAI.displayName))
-        assertTrue(handler.supports(PremiumProvider.OPENAI.displayName))
-        assertFalse(handler.supports("unsupported"))
+    @ParameterizedTest(name = "supports(''{0}'') = {1}")
+    @CsvSource(
+        "'֎ OpenAI', true",
+        "'💎 OpenAI', true",
+        "'unsupported', false",
+    )
+    fun `supports handles provider button texts`(
+        input: String,
+        expected: Boolean,
+    ) {
+        assertEquals(expected, handler.supports(input))
     }
 
     @Test
     fun `handle in main menu shows model selection for chosen provider`() {
-        every { navigationService.peek(100L) } returns BotScreen.MAIN_MENU
+        every { navigationService.peek(chatId) } returns BotScreen.MAIN_MENU
         val textSlot = slot<String>()
-        every { telegramClient.sendMessage(100L, capture(textSlot), any(), any()) } returns 1L
+        every { telegramClient.sendMessage(chatId, capture(textSlot), any(), any()) } returns sentMessageId
 
         runBlocking {
             handler.handle(
                 Message(
-                    chat = Chat(id = 100L),
+                    chat = Chat(id = chatId),
                     text = AiProvider.OPENAI.displayName,
                 ),
             )
         }
 
-        verify { navigationService.push(100L, BotScreen.PROVIDER_MENU) }
+        verify { navigationService.push(chatId, BotScreen.PROVIDER_MENU) }
         assertContains(textSlot.captured, "Choose a")
         assertContains(textSlot.captured, AiProvider.OPENAI.displayName)
     }
 
     @Test
     fun `handle in premium menu sends plan list for selected provider`() {
-        every { navigationService.peek(100L) } returns BotScreen.PREMIUM_MENU
+        every { navigationService.peek(chatId) } returns BotScreen.PREMIUM_MENU
         coEvery { subscriptionClient.getPlans() } returns
             listOf(
                 PlanInfo(
@@ -116,12 +131,12 @@ class ProviderButtonHandlerTest {
                 ),
             )
         val textSlot = slot<String>()
-        every { telegramClient.sendMessage(100L, capture(textSlot), any(), any()) } returns 1L
+        every { telegramClient.sendMessage(chatId, capture(textSlot), any(), any()) } returns sentMessageId
 
         runBlocking {
             handler.handle(
                 Message(
-                    chat = Chat(id = 100L),
+                    chat = Chat(id = chatId),
                     text = PremiumProvider.OPENAI.displayName,
                 ),
             )
@@ -132,56 +147,49 @@ class ProviderButtonHandlerTest {
         assertContains(textSlot.captured, "199.00")
     }
 
-    @Test
-    fun `handle sends unavailable message when plan fetch fails`() {
-        every { navigationService.peek(100L) } returns BotScreen.PREMIUM_MENU
-        coEvery { subscriptionClient.getPlans() } throws SubscriptionServiceException("down")
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(
+        "plan fetch fails, true",
+        "provider has no plans, false",
+    )
+    fun `handle sends unavailable message for invalid premium plans`(
+        caseName: String,
+        fetchFails: Boolean,
+    ) {
+        assertTrue(caseName.isNotBlank())
+        every { navigationService.peek(chatId) } returns BotScreen.PREMIUM_MENU
+        if (fetchFails) {
+            coEvery { subscriptionClient.getPlans() } throws SubscriptionServiceException("down")
+        } else {
+            coEvery { subscriptionClient.getPlans() } returns
+                listOf(
+                    PlanInfo(
+                        planId = "anthropic-basic",
+                        provider = "anthropic",
+                        displayName = "Anthropic Basic",
+                        price = "299.00",
+                        currency = "RUB",
+                        allocations = emptyList(),
+                    ),
+                )
+        }
 
         runBlocking {
             handler.handle(
-                Message(chat = Chat(id = 100L), text = PremiumProvider.OPENAI.displayName),
+                Message(chat = Chat(id = chatId), text = PremiumProvider.OPENAI.displayName),
             )
         }
 
         verify {
             telegramClient.sendMessage(
-                100L,
+                chatId,
                 BotResponses.AI_UNAVAILABLE_RESPONSE.text,
                 any(),
                 any(),
             )
         }
-    }
-
-    @Test
-    fun `handle sends unavailable message when provider has no plans`() {
-        every { navigationService.peek(100L) } returns BotScreen.PREMIUM_MENU
-        coEvery { subscriptionClient.getPlans() } returns
-            listOf(
-                PlanInfo(
-                    planId = "anthropic-basic",
-                    provider = "anthropic",
-                    displayName = "Anthropic Basic",
-                    price = "299.00",
-                    currency = "RUB",
-                    allocations = emptyList(),
-                ),
-            )
-
-        runBlocking {
-            handler.handle(
-                Message(chat = Chat(id = 100L), text = PremiumProvider.OPENAI.displayName),
-            )
+        if (!fetchFails) {
+            coVerify(exactly = 1) { subscriptionClient.getPlans() }
         }
-
-        verify {
-            telegramClient.sendMessage(
-                100L,
-                BotResponses.AI_UNAVAILABLE_RESPONSE.text,
-                any(),
-                any(),
-            )
-        }
-        coVerify(exactly = 1) { subscriptionClient.getPlans() }
     }
 }

@@ -31,6 +31,9 @@ navigation:
 support:
   operator-tag: "@test_support"
 
+moderation:
+  chat-id: 0
+
 grpc:
   retry:
     max-attempts: 1

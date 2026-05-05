@@ -27,6 +27,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -42,31 +43,37 @@ class ClearCommandHandlerTest {
     @MockK
     lateinit var telegramClient: TelegramClient
 
+    private val faker = Faker()
+
     private lateinit var handler: ClearCommandHandler
+    private var chatId: Long = 0L
+    private var sentMessageId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        chatId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        sentMessageId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         handler = ClearCommandHandler(chatClient, telegramClient)
         coJustRun { chatClient.clearContext(any()) }
-        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns 1L
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns sentMessageId
     }
 
     @Test
     fun `handle clears context for chat id`() =
         runTest {
-            handler.handle(Message(chat = Chat(id = 100L), text = "/clear"))
+            handler.handle(Message(chat = Chat(id = chatId), text = "/clear"))
 
-            coVerify { chatClient.clearContext(100L) }
+            coVerify { chatClient.clearContext(chatId) }
         }
 
     @Test
     fun `handle sends context cleared confirmation`() =
         runTest {
-            handler.handle(Message(chat = Chat(id = 100L), text = "/clear"))
+            handler.handle(Message(chat = Chat(id = chatId), text = "/clear"))
 
             verify {
                 telegramClient.sendMessage(
-                    100L,
+                    chatId,
                     BotResponses.CONTEXT_CLEARED_RESPONSE.text,
                     any(),
                     any(),

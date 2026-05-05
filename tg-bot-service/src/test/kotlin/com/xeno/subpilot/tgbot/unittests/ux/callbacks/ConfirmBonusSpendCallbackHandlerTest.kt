@@ -25,6 +25,7 @@ import io.mockk.coJustRun
 import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -42,10 +43,20 @@ class ConfirmBonusSpendCallbackHandlerTest {
     @MockK
     lateinit var bonusPurchaseService: BonusPurchaseService
 
+    private val faker = Faker()
+
     private lateinit var handler: ConfirmBonusSpendCallbackHandler
+    private var chatId: Long = 0L
+    private var userId: Long = 0L
+    private var messageId: Long = 0L
+    private lateinit var callbackId: String
 
     @BeforeEach
     fun setUp() {
+        chatId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        messageId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        callbackId = "cb-${faker.number().digits(8)}"
         handler = ConfirmBonusSpendCallbackHandler(bonusPurchaseService)
         coJustRun {
             bonusPurchaseService.confirmBonusSpend(
@@ -72,9 +83,9 @@ class ConfirmBonusSpendCallbackHandlerTest {
             val callback =
                 callbackQuery(
                     data = "bonus_yes:openai-basic:$idempotencyKey",
-                    chatId = 100L,
-                    userId = 42L,
-                    messageId = 7L,
+                    chatId = chatId,
+                    userId = userId,
+                    messageId = messageId,
                     text = "prompt-text",
                 )
 
@@ -82,11 +93,11 @@ class ConfirmBonusSpendCallbackHandlerTest {
 
             coVerify {
                 bonusPurchaseService.confirmBonusSpend(
-                    chatId = 100L,
-                    userId = 42L,
+                    chatId = chatId,
+                    userId = userId,
                     planId = "openai-basic",
                     idempotencyKey = idempotencyKey,
-                    promptMessageId = 7L,
+                    promptMessageId = messageId,
                     promptText = "prompt-text",
                 )
             }
@@ -98,9 +109,9 @@ class ConfirmBonusSpendCallbackHandlerTest {
             val callback =
                 callbackQuery(
                     data = "bonus_yes:malformed",
-                    chatId = 100L,
-                    userId = 42L,
-                    messageId = 7L,
+                    chatId = chatId,
+                    userId = userId,
+                    messageId = messageId,
                     text = "prompt",
                 )
 
@@ -119,7 +130,7 @@ class ConfirmBonusSpendCallbackHandlerTest {
         text: String,
     ): CallbackQuery =
         CallbackQuery(
-            id = "cb-1",
+            id = callbackId,
             from = User(id = userId),
             message = Message(messageId = messageId, chat = Chat(id = chatId), text = text),
             data = data,

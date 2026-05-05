@@ -13,6 +13,8 @@ spring:
       channels:
         subscription-service:
           address: ${SUBSCRIPTION_GRPC_ADDRESS:localhost:9091}
+        tg-bot-service:
+          address: ${TG_BOT_GRPC_ADDRESS:localhost:9081}
 
 openai:
   api-key: ${OPENAI_API_KEY}
@@ -40,3 +42,6 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        "[http.server.requests]": true

@@ -36,23 +36,40 @@ class UserInfoCommandHandler(
 
     override suspend fun handle(message: Message) {
         val chatId = message.chat.id
-        val targetUserId = message.text?.split(" ")?.getOrNull(1)?.toLongOrNull()
+        val targetUserId =
+            message.text
+                ?.split(" ")
+                ?.getOrNull(1)
+                ?.toLongOrNull()
         if (targetUserId == null) {
-            telegramClient.sendMessage(chatId, BotResponses.ADMIN_INVALID_USAGE_RESPONSE.format(command))
+            telegramClient.sendMessage(
+                chatId,
+                BotResponses.ADMIN_INVALID_USAGE_RESPONSE.format(command),
+            )
             return
         }
         val info = subscriptionClient.getUserInfo(targetUserId)
         if (info == null) {
-            telegramClient.sendMessage(chatId, BotResponses.ADMIN_USER_NOT_FOUND_RESPONSE.format(targetUserId))
+            telegramClient.sendMessage(
+                chatId,
+                BotResponses.ADMIN_USER_NOT_FOUND_RESPONSE.format(targetUserId),
+            )
             return
         }
-        val registeredAt = Instant.ofEpochSecond(info.registeredAtEpoch)
-            .atOffset(ZoneOffset.UTC)
-            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+        val registeredAt =
+            Instant
+                .ofEpochSecond(info.registeredAtEpoch)
+                .atOffset(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
         val status = if (info.blocked) "BANNED" else "ACTIVE"
         telegramClient.sendMessage(
             chatId,
-            BotResponses.ADMIN_USER_INFO_RESPONSE.format(targetUserId, registeredAt, info.role, status),
+            BotResponses.ADMIN_USER_INFO_RESPONSE.format(
+                targetUserId,
+                registeredAt,
+                info.role,
+                status,
+            ),
         )
     }
 }

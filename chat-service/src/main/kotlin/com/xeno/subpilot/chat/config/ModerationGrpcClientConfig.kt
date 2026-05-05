@@ -13,17 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.xeno.subpilot.chat.metrics
+package com.xeno.subpilot.chat.config
 
-import io.micrometer.core.instrument.Counter
-import io.micrometer.core.instrument.MeterRegistry
-import org.springframework.stereotype.Component
+import com.xeno.subpilot.proto.moderation.v1.ModerationServiceGrpcKt
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.grpc.client.GrpcChannelFactory
 
-@Component
-class ChatMetrics(
-    meterRegistry: MeterRegistry,
-) {
+@Configuration
+class ModerationGrpcClientConfig {
 
-    val promptsTotal: Counter =
-        Counter.builder("prompts_total").register(meterRegistry)
+    @Bean
+    fun moderationServiceStub(
+        channels: GrpcChannelFactory,
+    ): ModerationServiceGrpcKt.ModerationServiceCoroutineStub =
+        ModerationServiceGrpcKt.ModerationServiceCoroutineStub(
+            channels.createChannel("tg-bot-service"),
+        )
 }

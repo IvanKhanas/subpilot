@@ -25,6 +25,7 @@ import io.mockk.coJustRun
 import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -40,10 +41,18 @@ class PurchasePlanCallbackHandlerTest {
     @MockK
     lateinit var bonusPurchaseService: BonusPurchaseService
 
+    private val faker = Faker()
+
     private lateinit var handler: PurchasePlanCallbackHandler
+    private var chatId: Long = 0L
+    private var userId: Long = 0L
+    private lateinit var callbackId: String
 
     @BeforeEach
     fun setUp() {
+        chatId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        callbackId = "cb-${faker.number().digits(8)}"
         handler = PurchasePlanCallbackHandler(bonusPurchaseService)
         coJustRun { bonusPurchaseService.startBonusPurchase(any(), any(), any()) }
     }
@@ -59,21 +68,21 @@ class PurchasePlanCallbackHandlerTest {
         runTest {
             val callback =
                 CallbackQuery(
-                    id = "cb-1",
-                    from = User(id = 42L),
-                    message = Message(chat = Chat(id = 100L)),
+                    id = callbackId,
+                    from = User(id = userId),
+                    message = Message(chat = Chat(id = chatId)),
                     data = "purchase:openai-basic",
                 )
 
             handler.handle(callback)
 
-            coVerify { bonusPurchaseService.startBonusPurchase(100L, 42L, "openai-basic") }
+            coVerify { bonusPurchaseService.startBonusPurchase(chatId, userId, "openai-basic") }
         }
 
     @Test
     fun `handle does nothing when callback misses chat or user`() =
         runTest {
-            handler.handle(CallbackQuery(id = "cb-1", data = "purchase:openai-basic"))
+            handler.handle(CallbackQuery(id = callbackId, data = "purchase:openai-basic"))
 
             coVerify(exactly = 0) { bonusPurchaseService.startBonusPurchase(any(), any(), any()) }
         }

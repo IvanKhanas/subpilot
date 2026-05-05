@@ -28,10 +28,13 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.justRun
 import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 
-import kotlin.test.assertFalse
+import java.util.stream.Stream
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 import kotlinx.coroutines.test.runTest
@@ -55,33 +58,44 @@ class BackTextButtonHandlerTest {
         handler = BackTextButtonHandler(navigationService, screenRenderer)
     }
 
-    @Test
-    fun `supports returns true for back button text`() {
-        assertTrue(handler.supports(BotButtons.BTN_BACK))
+    @ParameterizedTest(name = "supports(''{0}'')={1}")
+    @MethodSource("supportsCases")
+    fun `supports handles back button text`(
+        text: String,
+        expected: Boolean,
+    ) {
+        assertEquals(expected, handler.supports(text))
     }
 
-    @Test
-    fun `supports returns false for other text`() {
-        assertFalse(handler.supports("something else"))
-    }
-
-    @Test
-    fun `handle renders the screen popped from navigation stack`() =
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("renderCases")
+    fun `handle renders screen from navigation stack or fallback`(
+        caseName: String,
+        poppedScreen: BotScreen?,
+        expectedScreen: BotScreen,
+    ) =
         runTest {
-            every { navigationService.pop(chatId) } returns BotScreen.PROVIDER_MENU
+            assertTrue(caseName.isNotBlank())
+            every { navigationService.pop(chatId) } returns poppedScreen
 
             handler.handle(Message(chat = Chat(id = chatId)))
 
-            verify { screenRenderer.render(chatId, BotScreen.PROVIDER_MENU) }
+            verify { screenRenderer.render(chatId, expectedScreen) }
         }
 
-    @Test
-    fun `handle renders MAIN_MENU when navigation stack is empty`() =
-        runTest {
-            every { navigationService.pop(chatId) } returns null
+    companion object {
+        @JvmStatic
+        fun supportsCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of(BotButtons.BTN_BACK, true),
+                Arguments.of("something else", false),
+            )
 
-            handler.handle(Message(chat = Chat(id = chatId)))
-
-            verify { screenRenderer.render(chatId, BotScreen.MAIN_MENU) }
-        }
+        @JvmStatic
+        fun renderCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of("pop returns previous screen", BotScreen.PROVIDER_MENU, BotScreen.PROVIDER_MENU),
+                Arguments.of("pop returns null", null, BotScreen.MAIN_MENU),
+            )
+    }
 }

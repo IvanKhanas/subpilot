@@ -29,6 +29,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -49,36 +50,44 @@ class BalanceCommandHandlerTest {
     @MockK
     lateinit var balanceFormatter: BalanceFormatter
 
+    private val faker = Faker()
+
     private lateinit var handler: BalanceCommandHandler
+    private var chatId: Long = 0L
+    private var userId: Long = 0L
+    private var sentMessageId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        chatId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        sentMessageId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         handler = BalanceCommandHandler(subscriptionClient, telegramClient, balanceFormatter)
-        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns 1L
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns sentMessageId
     }
 
     @Test
     fun `handle sends formatted balance for valid user`() {
         val balance = BalanceInfo(emptyList(), emptyList())
-        coEvery { subscriptionClient.getBalance(42L) } returns balance
+        coEvery { subscriptionClient.getBalance(userId) } returns balance
         every { balanceFormatter.format(balance) } returns "formatted-balance"
         val textSlot = io.mockk.slot<String>()
-        every { telegramClient.sendMessage(100L, capture(textSlot), any(), any()) } returns 1L
+        every { telegramClient.sendMessage(chatId, capture(textSlot), any(), any()) } returns sentMessageId
 
         runBlocking {
             handler.handle(
-                Message(chat = Chat(id = 100L), from = User(id = 42L), text = "/balance"),
+                Message(chat = Chat(id = chatId), from = User(id = userId), text = "/balance"),
             )
         }
 
         assertEquals("formatted-balance", textSlot.captured)
-        coVerify { subscriptionClient.getBalance(42L) }
+        coVerify { subscriptionClient.getBalance(userId) }
     }
 
     @Test
     fun `handle ignores command when user is missing`() {
         runBlocking {
-            handler.handle(Message(chat = Chat(id = 100L), from = null, text = "/balance"))
+            handler.handle(Message(chat = Chat(id = chatId), from = null, text = "/balance"))
         }
 
         coVerify(exactly = 0) { subscriptionClient.getBalance(any()) }

@@ -41,13 +41,15 @@ class TelegramMessageHandler(
     private val subscriptionClient: SubscriptionClient,
 ) : TelegramUpdateHandler {
 
-    private val regularCommandHandlers = botCommands
-        .filterNot { it is AdminBotCommand }
-        .associateBy { it.command }
+    private val regularCommandHandlers =
+        botCommands
+            .filterNot { it is AdminBotCommand }
+            .associateBy { it.command }
 
-    private val adminCommandHandlers = botCommands
-        .filterIsInstance<AdminBotCommand>()
-        .associateBy { it.command }
+    private val adminCommandHandlers =
+        botCommands
+            .filterIsInstance<AdminBotCommand>()
+            .associateBy { it.command }
 
     override suspend fun onUpdate(update: Update) {
         when {
@@ -127,7 +129,10 @@ class TelegramMessageHandler(
         sendUnknownCommand(message, command)
     }
 
-    private suspend fun sendUnknownCommand(message: Message, command: String) {
+    private suspend fun sendUnknownCommand(
+        message: Message,
+        command: String,
+    ) {
         telegramClient.sendMessage(
             chatId = message.chat.id,
             BotResponses.UNKNOWN_COMMAND_RESPONSE.text,

@@ -13,17 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.xeno.subpilot.chat.metrics
+package com.xeno.subpilot.tgbot.properties
 
-import io.micrometer.core.instrument.Counter
-import io.micrometer.core.instrument.MeterRegistry
-import org.springframework.stereotype.Component
+import org.springframework.boot.context.properties.ConfigurationProperties
 
-@Component
-class ChatMetrics(
-    meterRegistry: MeterRegistry,
-) {
-
-    val promptsTotal: Counter =
-        Counter.builder("prompts_total").register(meterRegistry)
-}
+@ConfigurationProperties(prefix = "moderation")
+data class ModerationProperties(
+    val chatId: Long,
+)

@@ -34,8 +34,13 @@ import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 
-import kotlin.test.assertFalse
+import java.util.stream.Stream
+
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 import kotlinx.coroutines.runBlocking
@@ -54,8 +59,8 @@ class SelectModelTextButtonHandlerTest {
 
     private lateinit var handler: SelectModelTextButtonHandler
 
-    private val userId = 1L
-    private val chatId = 42L
+    private val userId = TEST_USER_ID
+    private val chatId = TEST_CHAT_ID
     private val model = AiProvider.OPENAI.models.first()
     private val resultNoChange =
         ModelPreferenceResult(providerChanged = false, modelCost = 10, provider = "openai")
@@ -68,14 +73,13 @@ class SelectModelTextButtonHandlerTest {
         handler = SelectModelTextButtonHandler(telegramClient, subscriptionClient, chatClient)
     }
 
-    @Test
-    fun `supports returns true for known model display name`() {
-        assertTrue(handler.supports(model.displayName))
-    }
-
-    @Test
-    fun `supports returns false for unknown text`() {
-        assertFalse(handler.supports("UnknownModel"))
+    @ParameterizedTest(name = "text={0} -> supports={1}")
+    @MethodSource("supportsCases")
+    fun `supports handles known and unknown texts`(
+        text: String,
+        expectedSupports: Boolean,
+    ) {
+        assertEquals(expectedSupports, handler.supports(text))
     }
 
     @Test
@@ -148,23 +152,50 @@ class SelectModelTextButtonHandlerTest {
         verify { telegramClient.sendMessage(chatId, any(), any(), any()) }
     }
 
-    @Test
-    fun `handle does nothing when message text is null`() {
-        runBlocking {
-            handler.handle(Message(chat = Chat(id = chatId), from = User(id = userId), text = null))
-        }
-
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("invalidMessageCases")
+    fun `handle does nothing for invalid incoming messages`(
+        caseName: String,
+        message: Message,
+    ) {
+        assertTrue(caseName.isNotBlank())
+        runBlocking { handler.handle(message) }
         coVerify(exactly = 0) { subscriptionClient.setModelPreference(any(), any()) }
         verify(exactly = 0) { telegramClient.sendMessage(any(), any(), any(), any()) }
     }
 
-    @Test
-    fun `handle does nothing when from is null`() {
-        runBlocking {
-            handler.handle(Message(chat = Chat(id = chatId), from = null, text = model.displayName))
-        }
+    companion object {
+        private const val TEST_USER_ID = 1L
+        private const val TEST_CHAT_ID = 42L
+        private const val UNKNOWN_MODEL_TEXT = "UnknownModel"
+        private val KNOWN_MODEL_TEXT = AiProvider.OPENAI.models.first().displayName
 
-        coVerify(exactly = 0) { subscriptionClient.setModelPreference(any(), any()) }
-        verify(exactly = 0) { telegramClient.sendMessage(any(), any(), any(), any()) }
+        @JvmStatic
+        fun supportsCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of(KNOWN_MODEL_TEXT, true),
+                Arguments.of(UNKNOWN_MODEL_TEXT, false),
+            )
+
+        @JvmStatic
+        fun invalidMessageCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of(
+                    "null text",
+                    Message(
+                        chat = Chat(id = TEST_CHAT_ID),
+                        from = User(id = TEST_USER_ID),
+                        text = null,
+                    ),
+                ),
+                Arguments.of(
+                    "null from",
+                    Message(
+                        chat = Chat(id = TEST_CHAT_ID),
+                        from = null,
+                        text = KNOWN_MODEL_TEXT,
+                    ),
+                ),
+            )
     }
 }

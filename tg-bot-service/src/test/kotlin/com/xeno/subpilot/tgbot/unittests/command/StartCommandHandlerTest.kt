@@ -35,6 +35,12 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.MethodSource
+
+import java.util.stream.Stream
+
+import org.junit.jupiter.params.provider.Arguments
 
 import kotlinx.coroutines.test.runTest
 
@@ -55,6 +61,23 @@ class StartCommandHandlerTest {
 
     private lateinit var startCommandHandler: StartCommandHandler
 
+    companion object {
+        const val DEFAULT_CHAT_ID = 1L
+        const val SECOND_CHAT_ID = 42L
+        const val CUSTOM_CHAT_ID = 987654321L
+        const val TEST_USER_ID = 1L
+        const val START_COMMAND = "/start"
+        const val USERNAME_MIKE = "Mike"
+
+        @JvmStatic
+        fun greetingCases(): Stream<Arguments> =
+            Stream.of(
+                Arguments.of(null, StartCommandHandler.DEFAULT_USERNAME),
+                Arguments.of(User(id = TEST_USER_ID, firstName = USERNAME_MIKE), USERNAME_MIKE),
+                Arguments.of(User(id = TEST_USER_ID, firstName = null), StartCommandHandler.DEFAULT_USERNAME),
+            )
+    }
+
     @BeforeEach
     fun setUp() {
         startCommandHandler =
@@ -67,10 +90,14 @@ class StartCommandHandlerTest {
         coEvery { subscriptionClient.registerUser(any()) } returns null
     }
 
-    @Test
-    fun `uses default username when from is null`() =
+    @ParameterizedTest(name = "from={0} -> username={1}")
+    @MethodSource("greetingCases")
+    fun `sends greeting with resolved username`(
+        fromUser: User?,
+        expectedUsername: String,
+    ) =
         runTest {
-            val message = Message(chat = Chat(id = 1), from = null, text = "/start")
+            val message = Message(chat = Chat(id = DEFAULT_CHAT_ID), from = fromUser, text = START_COMMAND)
             justRun { navigationService.clear(any()) }
             every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
             justRun { screenRenderer.render(any(), any()) }
@@ -79,55 +106,10 @@ class StartCommandHandlerTest {
 
             verify {
                 telegramClient.sendMessage(
-                    chatId = 1,
+                    chatId = DEFAULT_CHAT_ID,
                     text =
                         BotResponses.START_ALREADY_REGISTERED_USER_RESPONSE.format(
-                            StartCommandHandler.DEFAULT_USERNAME,
-                        ),
-                )
-            }
-        }
-
-    @Test
-    fun `uses firstName if present`() =
-        runTest {
-            val message =
-                Message(
-                    chat = Chat(id = 1),
-                    from = User(id = 1, firstName = "Mike"),
-                    text = "/start",
-                )
-            justRun { navigationService.clear(any()) }
-            every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
-            justRun { screenRenderer.render(any(), any()) }
-
-            startCommandHandler.handle(message)
-
-            verify {
-                telegramClient.sendMessage(
-                    chatId = 1,
-                    text = BotResponses.START_ALREADY_REGISTERED_USER_RESPONSE.format("Mike"),
-                )
-            }
-        }
-
-    @Test
-    fun `uses default username when from exists but firstName is null`() =
-        runTest {
-            val message =
-                Message(chat = Chat(id = 1), from = User(id = 1, firstName = null), text = "/start")
-            justRun { navigationService.clear(any()) }
-            every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
-            justRun { screenRenderer.render(any(), any()) }
-
-            startCommandHandler.handle(message)
-
-            verify {
-                telegramClient.sendMessage(
-                    chatId = 1,
-                    text =
-                        BotResponses.START_ALREADY_REGISTERED_USER_RESPONSE.format(
-                            StartCommandHandler.DEFAULT_USERNAME,
+                            expectedUsername,
                         ),
                 )
             }
@@ -136,27 +118,27 @@ class StartCommandHandlerTest {
     @Test
     fun `clears navigation stack on start`() =
         runTest {
-            val message = Message(chat = Chat(id = 42), from = User(id = 1), text = "/start")
+            val message = Message(chat = Chat(id = SECOND_CHAT_ID), from = User(id = TEST_USER_ID), text = START_COMMAND)
             justRun { navigationService.clear(any()) }
             every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
             justRun { screenRenderer.render(any(), any()) }
 
             startCommandHandler.handle(message)
 
-            verify { navigationService.clear(42) }
+            verify { navigationService.clear(SECOND_CHAT_ID) }
         }
 
     @Test
     fun `renders main menu after greeting`() =
         runTest {
-            val message = Message(chat = Chat(id = 42), from = User(id = 1), text = "/start")
+            val message = Message(chat = Chat(id = SECOND_CHAT_ID), from = User(id = TEST_USER_ID), text = START_COMMAND)
             justRun { navigationService.clear(any()) }
             every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
             justRun { screenRenderer.render(any(), any()) }
 
             startCommandHandler.handle(message)
 
-            verify { screenRenderer.render(42, BotScreen.MAIN_MENU) }
+            verify { screenRenderer.render(SECOND_CHAT_ID, BotScreen.MAIN_MENU) }
         }
 
     @Test
@@ -164,9 +146,9 @@ class StartCommandHandlerTest {
         runTest {
             val message =
                 Message(
-                    chat = Chat(id = 987654321L),
-                    from = User(id = 1, firstName = "Mike"),
-                    text = "/start",
+                    chat = Chat(id = CUSTOM_CHAT_ID),
+                    from = User(id = TEST_USER_ID, firstName = USERNAME_MIKE),
+                    text = START_COMMAND,
                 )
             justRun { navigationService.clear(any()) }
             every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
@@ -174,7 +156,7 @@ class StartCommandHandlerTest {
 
             startCommandHandler.handle(message)
 
-            verify { telegramClient.sendMessage(chatId = 987654321L, text = any()) }
+            verify { telegramClient.sendMessage(chatId = CUSTOM_CHAT_ID, text = any()) }
         }
 
     @Test

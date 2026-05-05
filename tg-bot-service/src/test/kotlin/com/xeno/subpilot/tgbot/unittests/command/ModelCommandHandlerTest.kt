@@ -32,9 +32,12 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 import kotlinx.coroutines.runBlocking
 
@@ -50,10 +53,22 @@ class ModelCommandHandlerTest {
     @MockK
     lateinit var chatClient: ChatClient
 
+    private val faker = Faker()
+
     private lateinit var handler: ModelCommandHandler
 
-    private val chatId = 100L
-    private val userId = 42L
+    private var chatId: Long = 0L
+    private var userId: Long = 0L
+    private var messageId: Long = 0L
+
+    companion object {
+        const val MODEL_COMMAND = "/model gpt-4o"
+        const val UNKNOWN_MODEL_COMMAND = "/model unknown-model"
+        const val INVALID_EMPTY_ARGS_COMMAND = "/model"
+        const val INVALID_EXTRA_ARGS_COMMAND = "/model gpt-4o extra"
+        const val TARGET_MODEL_ID = "gpt-4o"
+    }
+
     private val noChange =
         ModelPreferenceResult(providerChanged = false, modelCost = 10, provider = "openai")
     private val providerChanged =
@@ -61,63 +76,65 @@ class ModelCommandHandlerTest {
 
     @BeforeEach
     fun setUp() {
+        chatId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        messageId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         handler = ModelCommandHandler(telegramClient, subscriptionClient, chatClient)
         every { telegramClient.sendMessage(any(), any()) } returns null
     }
 
     private fun message(text: String) =
         Message(
-            messageId = 1L,
+            messageId = messageId,
             from = User(id = userId),
             chat = Chat(id = chatId),
             text = text,
         )
 
-    @Test
-    fun `handle sends usage when no model arg provided`() {
-        runBlocking { handler.handle(message("/model")) }
-
-        verify { telegramClient.sendMessage(chatId, match { it.startsWith("Usage:") }) }
-    }
-
-    @Test
-    fun `handle sends usage when too many args provided`() {
-        runBlocking { handler.handle(message("/model gpt-4o extra")) }
+    @ParameterizedTest(name = "command=''{0}''")
+    @ValueSource(
+        strings = [
+            INVALID_EMPTY_ARGS_COMMAND,
+            INVALID_EXTRA_ARGS_COMMAND,
+        ],
+    )
+    fun `handle sends usage for invalid model command format`(command: String) {
+        runBlocking { handler.handle(message(command)) }
 
         verify { telegramClient.sendMessage(chatId, match { it.startsWith("Usage:") }) }
     }
 
     @Test
     fun `handle sends not found when model id is unknown`() {
-        runBlocking { handler.handle(message("/model unknown-model")) }
+        runBlocking { handler.handle(message(UNKNOWN_MODEL_COMMAND)) }
 
         verify { telegramClient.sendMessage(chatId, match { it.contains("Unknown model") }) }
     }
 
     @Test
     fun `handle sends confirmation after setting model`() {
-        coEvery { subscriptionClient.setModelPreference(userId, "gpt-4o") } returns noChange
+        coEvery { subscriptionClient.setModelPreference(userId, TARGET_MODEL_ID) } returns noChange
 
-        runBlocking { handler.handle(message("/model gpt-4o")) }
+        runBlocking { handler.handle(message(MODEL_COMMAND)) }
 
         verify { telegramClient.sendMessage(chatId, match { it.contains("GPT-4o") }) }
     }
 
     @Test
     fun `handle clears context when provider changes`() {
-        coEvery { subscriptionClient.setModelPreference(userId, "gpt-4o") } returns providerChanged
+        coEvery { subscriptionClient.setModelPreference(userId, TARGET_MODEL_ID) } returns providerChanged
         coJustRun { chatClient.clearContext(chatId) }
 
-        runBlocking { handler.handle(message("/model gpt-4o")) }
+        runBlocking { handler.handle(message(MODEL_COMMAND)) }
 
         coVerify { chatClient.clearContext(chatId) }
     }
 
     @Test
     fun `handle does not clear context when provider is unchanged`() {
-        coEvery { subscriptionClient.setModelPreference(userId, "gpt-4o") } returns noChange
+        coEvery { subscriptionClient.setModelPreference(userId, TARGET_MODEL_ID) } returns noChange
 
-        runBlocking { handler.handle(message("/model gpt-4o")) }
+        runBlocking { handler.handle(message(MODEL_COMMAND)) }
 
         coVerify(exactly = 0) { chatClient.clearContext(any()) }
     }
@@ -127,7 +144,7 @@ class ModelCommandHandlerTest {
         coEvery { subscriptionClient.setModelPreference(any(), any()) } throws
             SubscriptionServiceException("failed")
 
-        runBlocking { handler.handle(message("/model gpt-4o")) }
+        runBlocking { handler.handle(message(MODEL_COMMAND)) }
 
         verify { telegramClient.sendMessage(chatId, BotResponses.MODEL_SET_FAILED_RESPONSE.text) }
     }

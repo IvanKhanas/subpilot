@@ -22,6 +22,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.slot
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -39,19 +40,27 @@ class SubscriptionActivatedConsumerTest {
     @MockK
     lateinit var objectMapper: ObjectMapper
 
+    private val faker = Faker()
+
     private lateinit var consumer: SubscriptionActivatedConsumer
+    private var userId: Long = 0L
+    private var alternativeUserId: Long = 0L
+    private var sentMessageId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        alternativeUserId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        sentMessageId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         consumer = SubscriptionActivatedConsumer(telegramClient, objectMapper)
-        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns 1L
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns sentMessageId
     }
 
     @Test
     fun `consume sends activation message with plan and allocations`() {
         val event =
             SubscriptionActivatedEvent(
-                userId = 42L,
+                userId = userId,
                 planDisplayName = "Basic - 100 requests for OpenAI",
                 allocations =
                     listOf(
@@ -73,7 +82,7 @@ class SubscriptionActivatedConsumerTest {
         } returns
             event
         val textSlot = slot<String>()
-        every { telegramClient.sendMessage(42L, capture(textSlot), any(), any()) } returns 1L
+        every { telegramClient.sendMessage(userId, capture(textSlot), any(), any()) } returns sentMessageId
 
         consumer.consume("event-json")
 
@@ -88,7 +97,7 @@ class SubscriptionActivatedConsumerTest {
     fun `consume uses user id as chat id`() {
         val event =
             SubscriptionActivatedEvent(
-                userId = 77L,
+                userId = alternativeUserId,
                 planDisplayName = "Plan",
                 allocations = emptyList(),
             )
@@ -100,10 +109,10 @@ class SubscriptionActivatedConsumerTest {
         } returns
             event
         val chatIdSlot = slot<Long>()
-        every { telegramClient.sendMessage(capture(chatIdSlot), any(), any(), any()) } returns 1L
+        every { telegramClient.sendMessage(capture(chatIdSlot), any(), any(), any()) } returns sentMessageId
 
         consumer.consume("event-json")
 
-        assertEquals(77L, chatIdSlot.captured)
+        assertEquals(alternativeUserId, chatIdSlot.captured)
     }
 }

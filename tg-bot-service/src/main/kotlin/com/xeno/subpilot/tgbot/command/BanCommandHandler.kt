@@ -36,14 +36,24 @@ class BanCommandHandler(
 
     override suspend fun handle(message: Message) {
         val chatId = message.chat.id
-        val targetUserId = message.text?.split(" ")?.getOrNull(1)?.toLongOrNull()
+        val targetUserId =
+            message.text
+                ?.split(" ")
+                ?.getOrNull(1)
+                ?.toLongOrNull()
         if (targetUserId == null) {
-            telegramClient.sendMessage(chatId, BotResponses.ADMIN_INVALID_USAGE_RESPONSE.format(command))
+            telegramClient.sendMessage(
+                chatId,
+                BotResponses.ADMIN_INVALID_USAGE_RESPONSE.format(command),
+            )
             return
         }
         try {
             subscriptionClient.blockUser(targetUserId)
-            telegramClient.sendMessage(chatId, BotResponses.ADMIN_BAN_SUCCESS_RESPONSE.format(targetUserId))
+            telegramClient.sendMessage(
+                chatId,
+                BotResponses.ADMIN_BAN_SUCCESS_RESPONSE.format(targetUserId),
+            )
             logger.atInfo {
                 this.message = "admin_ban_executed"
                 payload = mapOf("target_user_id" to targetUserId, "admin_chat_id" to chatId)

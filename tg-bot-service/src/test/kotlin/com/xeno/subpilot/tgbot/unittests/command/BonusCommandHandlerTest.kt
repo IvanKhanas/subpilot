@@ -28,6 +28,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
+import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -45,44 +46,50 @@ class BonusCommandHandlerTest {
     @MockK
     lateinit var telegramClient: TelegramClient
 
+    private val faker = Faker()
+
     private lateinit var handler: BonusCommandHandler
+    private var chatId: Long = 0L
+    private var userId: Long = 0L
 
     @BeforeEach
     fun setUp() {
+        chatId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
+        userId = faker.number().numberBetween(1_000_000L, Long.MAX_VALUE)
         handler = BonusCommandHandler(loyaltyClient, telegramClient)
         every { telegramClient.sendMessage(any(), any(), any(), any()) } returns 1L
     }
 
     @Test
     fun `handle sends bonus balance when loyalty client succeeds`() {
-        coEvery { loyaltyClient.getBalance(42L) } returns 150
+        coEvery { loyaltyClient.getBalance(userId) } returns 150
         val textSlot = io.mockk.slot<String>()
-        every { telegramClient.sendMessage(100L, capture(textSlot), any(), any()) } returns 1L
+        every { telegramClient.sendMessage(chatId, capture(textSlot), any(), any()) } returns 1L
 
         runBlocking {
             handler.handle(
                 Message(
-                    chat = Chat(id = 100L),
-                    from = User(id = 42L),
+                    chat = Chat(id = chatId),
+                    from = User(id = userId),
                     text = "/bonus",
                 ),
             )
         }
 
         assertEquals("You have 150 bonus points.", textSlot.captured)
-        coVerify { loyaltyClient.getBalance(42L) }
+        coVerify { loyaltyClient.getBalance(userId) }
     }
 
     @Test
     fun `handle sends failure message when loyalty lookup fails`() {
-        coEvery { loyaltyClient.getBalance(42L) } throws
+        coEvery { loyaltyClient.getBalance(userId) } throws
             LoyaltyServiceException("down", RuntimeException())
 
         runBlocking {
             handler.handle(
                 Message(
-                    chat = Chat(id = 100L),
-                    from = User(id = 42L),
+                    chat = Chat(id = chatId),
+                    from = User(id = userId),
                     text = "/bonus",
                 ),
             )
@@ -90,7 +97,7 @@ class BonusCommandHandlerTest {
 
         verify {
             telegramClient.sendMessage(
-                100L,
+                chatId,
                 match {
                     it.contains("Failed to get bonus balance")
                 },
@@ -105,7 +112,7 @@ class BonusCommandHandlerTest {
         runBlocking {
             handler.handle(
                 Message(
-                    chat = Chat(id = 100L),
+                    chat = Chat(id = chatId),
                     from = null,
                     text = "/bonus",
                 ),
