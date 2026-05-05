@@ -27,6 +27,8 @@ services:
     restart: no
     ports:
       - "5540:5540"
+    networks:
+      - subpilot_internal
     volumes:
       - redisinsight_data:/data
     depends_on:
