@@ -1,542 +1,309 @@
 # SubPilot
 
-Backend for a Telegram AI chatbot with usage limits, paid subscriptions, and a cashback loyalty program. Built as six Kotlin/Spring Boot microservices communicating over gRPC and Kafka, with an observability stack (Prometheus + Grafana) and Nginx as the sole public entry point.
+Telegram AI bot backend as a microservice system: paid subscriptions, free quota, cashback loyalty points, admin API, and production-style observability/security stack.
+
+The project is designed as a strong portfolio case for a junior/stage backend role in fintech teams (T-Банк / Альфа): reliability, idempotency, security boundaries, and test coverage are first-class concerns.
 
 ---
 
-## Table of contents
+## Why this project is strong for fintech interviews
 
-- [Services](#services)
-- [How the system works](#how-the-system-works)
-- [gRPC call chains](#grpc-call-chains)
-- [Kafka message flows](#kafka-message-flows)
-- [Database schemas](#database-schemas)
-- [Configuration reference](#configuration-reference)
-- [How to add a subscription plan](#how-to-add-a-subscription-plan)
-- [How to add a new AI model](#how-to-add-a-new-ai-model)
-- [How to add a new AI provider](#how-to-add-a-new-ai-provider)
-- [Local run](#local-run)
-- [Build and tests](#build-and-tests)
+- Transaction safety across DB + Kafka via transactional outbox.
+- Idempotent business flows for duplicate webhooks/retries.
+- Clear separation of synchronous (gRPC) and asynchronous (Kafka) communication.
+- Security perimeter: Nginx as the only public entry point, scoped JWT auth in gateway/admin layers.
+- Operational maturity: Prometheus metrics, Grafana dashboards, alert rules, centralized quality gates in CI.
+- Structured test strategy: unit, integration, and testcontainers.
 
 ---
 
-## Services
+## Architecture
 
-| Service | HTTP port | gRPC port | Database |
-|---|---|---|---|
-| `tg-bot-service` | 1991 | — | Redis (navigation, chat history) |
-| `chat-service` | 8082 | 9090 | Redis (chat history) |
-| `subscription-service` | 8083 | 9091 | PostgreSQL `subscription` |
-| `payment-service` | 8084 | 9094 | PostgreSQL `payment` |
-| `loyalty-service` | 8085 | 9095 | PostgreSQL `loyalty` |
-| `admin-service` | 8086 | — | PostgreSQL `admin` |
-| `gateway-service` | 8088 | — | — |
+### Services
 
-Supporting modules: `proto` (shared gRPC contracts), `migrations` (Liquibase changelogs per service), `ktlint-rules` (custom lint ruleset).
+| Service | HTTP | gRPC | Main responsibility |
+|---|---:|---:|---|
+| `tg-bot-service` | 1991 | 9081 | Telegram UX, command handling, async notifications |
+| `chat-service` | 8082 | 9090 | Chat orchestration, access check + refund on AI failure |
+| `subscription-service` | 8083 | 9091 | Users, plans, balances, model preferences, activation |
+| `payment-service` | 8084 | 9094 | YooKassa payments, webhook handling, outbox publishing |
+| `loyalty-service` | 8085 | 9095 | Cashback accrual/spend, points-based activation |
+| `admin-service` | 8086 | — | Admin REST API, audit log, auth endpoints |
+| `gateway-service` | 8088 | — | Public API auth + proxy to admin-service |
 
-Infrastructure (in `infra/`): PostgreSQL, Redis, Kafka (3-broker KRaft), Nginx, Prometheus, Grafana. Each has its own `docker-compose.yml` that the root `docker-compose.yml` includes.
+### Shared modules
 
----
+- `proto` — gRPC contracts (contract-first API).
+- `migrations` — Liquibase changelogs for all service DBs.
+- `ktlint-rules` — custom lint rules.
+- `buildSrc` — shared build conventions (`license`, `jacoco`).
 
-## How the system works
+### Infra stack (`infra/`)
 
-Users talk to the bot through Telegram. Each message goes through an access check: the user either has free quota left or a paid balance. When they run out, the bot prompts them to subscribe.
-
-Model costs and the model-to-provider mapping live in `subscription-service/src/main/resources/application.yml`. Subscription plans (name, price, request grants) live in the `subscription` PostgreSQL database — adding a plan is an SQL insert, no redeploy needed.
-
-Payment goes through YooKassa. The bot creates a checkout link; YooKassa sends a webhook when the user pays. Because a webhook call and a database write are two separate systems, the service uses a transactional outbox to guarantee nothing gets lost (details in the [Kafka section](#kafka-message-flows)).
-
-After a successful payment, `subscription-service` activates the subscription and fires an event. `loyalty-service` listens to the same event and credits cashback points. `tg-bot-service` listens for the activation event and sends the user a Telegram message.
-
-Users can spend cashback points on subscriptions. If they have enough to cover the full price, no YooKassa payment is created at all. If they only have part of the price, the points become a discount and YooKassa handles the rest.
-
-All admin operations (user management, audit log) are exposed via `admin-service` REST endpoints. `gateway-service` sits in front of it, handles JWT auth, and routes `/api/v1/**` requests. Nginx is the sole public entry point — it terminates HTTPS and proxies to the gateway.
+- PostgreSQL
+- Redis
+- Kafka (KRaft, 3 brokers)
+- Nginx (TLS termination + routing)
+- Prometheus + Grafana
 
 ---
 
-## gRPC call chains
+## Engineering practices implemented
 
-All gRPC calls go through `GrpcRetry`, which retries with exponential backoff when a service responds with `UNAVAILABLE`. Default: 3 attempts, starting at 200 ms, multiplier 3.0.
+### 1) Contract-first integration
 
-### Sending a chat message
+All gRPC APIs are defined in `proto/` and generated for consumers/providers. This makes service boundaries explicit and reviewable.
 
-The user sends a text. `tg-bot-service` forwards it to `chat-service`, which asks `subscription-service` to check and debit access atomically before calling OpenAI. If the OpenAI call fails after the debit, `chat-service` issues a refund.
+### 2) Reliability in inter-service calls
 
-```
+Outbound gRPC wrappers use retry only for `UNAVAILABLE` with exponential backoff:
+
+- `GRPC_RETRY_MAX_ATTEMPTS` (default `3`)
+- `GRPC_RETRY_INITIAL_BACKOFF_MS` (default `200`)
+- `GRPC_RETRY_BACKOFF_MULTIPLIER` (default `3.0`)
+
+### 3) Transactional outbox for payment events
+
+Card payment success flow in `payment-service`:
+
+1. webhook marks payment `SUCCEEDED`
+2. same DB transaction inserts row into `outbox_payment_event`
+3. scheduler publishes unpublished rows to Kafka topic `payment_succeeded`
+4. rows are marked as published
+
+This prevents "DB committed but event lost" scenarios.
+
+### 4) Idempotency as a business invariant
+
+Duplicate deliveries are safe by design.
+
+Examples in DB schema:
+
+- `subscription`: `UNIQUE(payment_id, provider)`
+- `loyalty`: `UNIQUE(payment_id, type)`
+
+Admin and loyalty operations use idempotency keys where needed.
+
+### 5) Security boundaries and scoped authorization
+
+- Nginx is the only public entry point.
+- `/payment/webhook` is IP-restricted to YooKassa ranges.
+- Public admin API goes through `gateway-service`.
+- Access policy:
+  - `GET /api/v1/admin/**` -> `admin.read` or `admin.write`
+  - `POST|PUT|PATCH|DELETE /api/v1/admin/**` -> `admin.write`
+- Gateway issues internal JWT for hop to `admin-service`.
+
+### 6) Observability and actionable alerts
+
+Micrometer metrics are exposed via `/actuator/prometheus` from services.
+
+Business metrics included:
+
+- `payments_succeeded_total`
+- `webhook_failures_total`
+- `outbox_backlog_size`
+- `subscription_activations_total`
+- `user_registrations_total`
+- `prompts_total`
+
+Prometheus alert rules include:
+
+- high HTTP 5xx rate
+- high p99 API latency
+- outbox backlog growth/critical
+- webhook failures
+- Kafka consumer lag high/critical
+
+### 7) Quality gates in build + CI
+
+- `ktlintCheck` + custom rules from `ktlint-rules`
+- `spotlessCheck` for license headers
+- JaCoCo convention plugin with line coverage threshold (`>= 80%`)
+- GitHub Actions pipeline (`.github/workflows/github_ci.yml`): build, test + JaCoCo reports, lint, optional SonarQube
+
+### 8) Test pyramid in practice
+
+Per service test layout:
+
+- `unittests/` — business logic with mocks
+- `integrationtests/` — Spring context / WireMock
+- `testcontainers/` — real PostgreSQL / Kafka / Redis dependent scenarios
+
+---
+
+## Core business flows
+
+### Chat request flow
+
+```text
 tg-bot-service
-  → chat-service.ProcessMessage
-      → subscription-service.CheckAccess    (deducts requests_remaining in a single UPDATE)
-      → OpenAI API
-      → subscription-service.RefundAccess   (only if OpenAI fails after debit)
+  -> chat-service.ProcessMessage
+      -> subscription-service.CheckAccess (atomic debit)
+      -> OpenAI call
+      -> subscription-service.RefundAccess (on AI failure)
 ```
 
-`CheckAccess` runs `UPDATE user_request_balance SET requests_remaining = requests_remaining - cost WHERE requests_remaining >= cost`. Zero rows updated means the user is over quota.
+### Card payment activation flow
 
-### Checking request balance
+```text
+YooKassa webhook -> payment-service
+  [TX] update payment status + insert outbox row
+  [Scheduler] publish to Kafka payment_succeeded
 
-```
-tg-bot-service → subscription-service.GetBalance
-```
+payment_succeeded consumed by:
+  - subscription-service (activate + publish subscription_activated)
+  - loyalty-service (cashback accrual)
 
-Returns free quota and paid balance broken down per AI provider. The bot formats this and sends it back to the user.
-
-### Changing AI model
-
-Switching provider clears chat history, because context from one model is useless for another.
-
-```
-tg-bot-service
-  → subscription-service.SetModelPreference
-  → chat-service.ClearHistory
+subscription_activated consumed by:
+  - tg-bot-service (notify user)
 ```
 
-### Viewing subscription plans
+### Full bonus payment flow (no card)
 
-```
-tg-bot-service → subscription-service.GetPlans
-```
-
-`subscription-service` reads active plans and their request allocations from the database and returns them.
-
-### Paying with card
-
-```
-tg-bot-service
-  → payment-service.CreatePayment
-      → YooKassa API              (creates the payment, returns a checkout URL)
-  ← bot sends the URL to the user
-```
-
-From this point the flow is async. YooKassa calls the webhook after the user pays. See [Kafka message flows](#kafka-message-flows).
-
-### Paying with bonus points, partial discount
-
-The user has points but fewer than the plan costs. The bot applies all available points as a discount and creates a payment for the remainder.
-
-```
-tg-bot-service
-  → loyalty-service.GetBalance
-  → subscription-service.GetPlanInfo       (to know the price)
-  → payment-service.CreatePayment(bonusPointsToApply = balance)
-      → YooKassa API
-  ← bot sends the checkout URL
-```
-
-After payment succeeds, `loyalty-service` earns cashback on the discounted amount only.
-
-### Paying entirely with bonus points
-
-The user has enough points to cover the full price. No YooKassa payment is created.
-
-```
-tg-bot-service
-  → loyalty-service.SpendPoints
-      → subscription-service.ActivateSubscription   (internal gRPC, no Kafka round-trip)
-  ← bot confirms activation immediately
-```
-
-`loyalty-service` calls `subscription-service` directly so the user gets confirmation without waiting for an async event. The same idempotency key passes through to protect against retries.
-
-### Checking loyalty balance
-
-```
-tg-bot-service → loyalty-service.GetBalance
+```text
+tg-bot-service -> loyalty-service.SpendPoints
+  -> subscription-service.ActivateSubscription (direct gRPC)
 ```
 
 ---
 
-## Kafka message flows
+## Repository structure
 
-Two topics carry all async domain events.
-
-```
-Topic: payment_succeeded
-  Published by:  payment-service (via transactional outbox)
-  Consumed by:
-    subscription-service → activates subscription, then publishes to subscription_activated
-    loyalty-service      → credits cashback points (floor(amount * cashback_rate))
-
-Topic: subscription_activated
-  Published by:  subscription-service
-  Consumed by:
-    tg-bot-service → sends "Subscription activated" message to user in Telegram
-```
-
-Kafka runs as a 3-broker KRaft cluster. Topics are auto-created with 3 partitions and replication factor 3. A Kafka UI is available at `http://localhost:8090` when running with Docker Compose.
-
-### Why the transactional outbox?
-
-When YooKassa confirms a payment, `payment-service` has to do two things: update the payment status in PostgreSQL and publish an event to Kafka. Both need to succeed together. If the service updates the DB then crashes before sending to Kafka, the payment is marked as succeeded but nobody gets notified.
-
-The outbox pattern solves this by writing both in one database transaction:
-
-1. `handlePaymentWebhook` updates `payment.status = SUCCEEDED` and inserts a row into `outbox_payment_event` — same transaction, same connection.
-2. A scheduled job (`YooKassaPaymentOutboxPublisher`) runs every 5 seconds, reads up to 100 unpublished rows, sends each to Kafka, then marks them published.
-
-If the scheduler crashes mid-batch, unpublished rows just stay there and get picked up on the next tick. Because consumers are idempotent, duplicate delivery is safe: `UNIQUE(payment_id, provider)` on `user_subscription` and `UNIQUE(payment_id, type)` on `loyalty_transaction` make re-processing a no-op.
-
-### Full async flow after card payment
-
-```
-YooKassa webhook → payment-service
-  [DB transaction]
-    UPDATE payment SET status = SUCCEEDED
-    INSERT outbox_payment_event
-
-  [Scheduler, every 5s]
-    → Kafka topic: payment_succeeded
-
-  subscription-service (consumer)
-    INSERT user_subscription         (idempotent: UNIQUE payment_id + provider)
-    UPDATE user_request_balance += earned_requests
-    → Kafka topic: subscription_activated
-
-  loyalty-service (consumer)
-    INSERT loyalty_transaction       (idempotent: UNIQUE payment_id + type)
-    UPDATE user_loyalty_balance += floor(amount * cashback_rate)
-
-  tg-bot-service (consumer)
-    → Telegram: "Subscription activated! Plan: X, N requests credited"
+```text
+admin-service/
+chat-service/
+gateway-service/
+loyalty-service/
+payment-service/
+subscription-service/
+tg-bot-service/
+proto/
+migrations/
+infra/
+ktlint-rules/
+buildSrc/
 ```
 
 ---
 
-## Database schemas
+## Quick start (Docker)
 
-### subscription (PostgreSQL)
+### 1) Prerequisites
 
-```sql
-subscription_user         -- registered users: user_id, blocked, role
-user_subscription         -- immutable purchase log: plan_id, provider, earned_requests, payment_id
-user_request_balance      -- mutable paid balance: (user_id, provider) → requests_remaining
-user_free_quota           -- free-tier quota per user and provider, with reset timestamp
-user_model_preference     -- preferred model per user
-subscription_plan         -- plan catalog: plan_id, provider, display_name, price, currency, active
-subscription_plan_allocation -- request grants per plan and provider
-```
+- Docker + Docker Compose
+- JDK 21 (for local Gradle commands)
 
-`user_subscription` is append-only. Requests are credited to `user_request_balance` at activation time. Access control reads only `requests_remaining`.
-
-### payment (PostgreSQL)
-
-```sql
-payment                   -- UUID id, user_id, plan_id, yookassa_payment_id, amount, status
-outbox_payment_event      -- event_type, payload (JSON), published_at (NULL = not yet published)
-```
-
-### loyalty (PostgreSQL)
-
-```sql
-user_loyalty_balance      -- user_id → points
-loyalty_transaction       -- user_id, amount, type (EARNED/SPENT), payment_id, created_at
-```
-
-### admin (PostgreSQL)
-
-```sql
-audit_log                 -- actor, action, target_type, target_id, details (JSON), created_at
-```
-
----
-
-## Configuration reference
-
-### Environment variables
-
-Copy `.env.example` to `.env` and fill in the required values.
-
-| Variable | Required | Default | Notes |
-|---|---|---|---|
-| `TELEGRAM_BOT_TOKEN` | yes | — | |
-| `OPENAI_API_KEY` | yes | — | |
-| `REDIS_PASSWORD` | yes | — | Must be non-empty for Docker Compose |
-| `SUBSCRIPTION_DB_PASSWORD` | yes | — | |
-| `PAYMENT_DB_PASSWORD` | yes | — | |
-| `LOYALTY_DB_PASSWORD` | yes | — | |
-| `ADMIN_DB_PASSWORD` | yes | — | |
-| `YOOKASSA_SHOP_ID` | yes | — | |
-| `YOOKASSA_SECRET_KEY` | yes | — | |
-| `YOOKASSA_RETURN_URL` | yes | — | URL the user lands on after paying |
-| `ADMIN_JWT_SECRET` | yes | — | Secret for internal gateway→admin service JWTs |
-| `ADMIN_AUTH_JWT_SECRET` | yes | — | Secret for user-facing access/refresh tokens |
-| `MODERATION_CHAT_ID` | yes | — | Telegram chat ID for moderation notifications |
-| `NGINX_SERVER_NAME` | yes | — | Public domain name for Nginx TLS config |
-| `LOYALTY_CASHBACK_RATE` | no | `0.10` | Fraction of payment credited as points (0.10 = 10%) |
-| `SUBSCRIPTION_FREE_QUOTA` | no | `10` | Free requests per user per reset period |
-| `SUBSCRIPTION_FREE_QUOTA_RESET_PERIOD` | no | `7d` | Reset period, e.g. `7d`, `24h` |
-| `OPENAI_DEFAULT_MODEL` | no | `gpt-4o-mini` | Default model for new users |
-| `ADMIN_BOOTSTRAP_USERNAME` | no | — | Auto-created admin user on first startup |
-| `ADMIN_BOOTSTRAP_PASSWORD` | no | — | Password for the bootstrap admin user |
-| `GRAFANA_ADMIN_PASSWORD` | no | `admin` | Grafana web UI password |
-
-### Subscription plans (database)
-
-Plans live in two tables in the `subscription` database: `subscription_plan` and `subscription_plan_allocation`. Each plan has a stable string ID, a display name, a price, a currency, and one or more allocations that define how many requests the user gets per provider when they buy the plan.
-
-### Model costs and providers (application.yml)
-
-Model costs and the mapping from model ID to provider are in `subscription-service/src/main/resources/application.yml`.
-
-```yaml
-subscription:
-  model-providers:
-    gpt-4o-mini: openai
-    gpt-4o: openai
-    gpt-4-turbo: openai
-  model-costs:
-    gpt-4o-mini: 1
-    gpt-4o: 2
-    gpt-4-turbo: 3
-```
-
----
-
-## How to add a subscription plan
-
-Plans are stored in the `subscription` database, so no redeploy is needed — add rows, and the change takes effect immediately.
-
-Insert the plan and its allocations in one transaction:
-
-```sql
-BEGIN;
-
-INSERT INTO subscription_plan (plan_id, provider, display_name, price, currency)
-VALUES ('openai-ultra', 'openai', 'Ultra - 1000 requests for OpenAI', 999.00, 'RUB');
-
-INSERT INTO subscription_plan_allocation (plan_id, provider, requests)
-VALUES ('openai-ultra', 'openai', 1000);
-
-COMMIT;
-```
-
-The `plan_id` (`openai-ultra`) is stored in `user_subscription.plan_id` and `payment.plan_id` for every purchase of this plan. Pick something stable — renaming it later would orphan existing records.
-
-`payment-service` fetches the price at payment time via `subscription-service.GetPlanInfo` over gRPC, so there is nothing else to update. The plan shows up in the bot's Premium screen on the next `GetPlans` call.
-
-To deactivate a plan without deleting it (preserving historical records):
-
-```sql
-UPDATE subscription_plan SET active = false WHERE plan_id = 'openai-ultra';
-```
-
-Deactivated plans are invisible to users but their `plan_id` stays intact in `user_subscription` and `payment` records.
-
-### Multi-provider plans
-
-A plan can grant requests across multiple providers at once. The `subscription_plan.provider` field is just a UI label — it controls which provider menu the plan appears under in the bot. The actual grants come from `subscription_plan_allocation`, which can have as many rows as you need.
-
-When a user buys a combo plan, activation creates one row in `user_subscription` per allocation and credits each provider's balance separately in `user_request_balance`:
-
-```
-(user_id=1, provider=openai)     → requests_remaining += 100
-(user_id=1, provider=anthropic)  → requests_remaining += 50
-```
-
-Access checks are provider-scoped. Sending a GPT-4o message debits the OpenAI balance. Sending a Claude message debits the Anthropic balance. The two are completely independent.
-
-To add a combo plan:
-
-```sql
-BEGIN;
-
-INSERT INTO subscription_plan (plan_id, provider, display_name, price, currency)
-VALUES ('combo-basic', 'openai', 'Combo - 100 OpenAI + 50 Anthropic', 299.00, 'RUB');
-
-INSERT INTO subscription_plan_allocation (plan_id, provider, requests)
-VALUES ('combo-basic', 'openai',    100),
-       ('combo-basic', 'anthropic',  50);
-
-COMMIT;
-```
-
-The activation pipeline and access checks need no code changes — they already work per-provider. The only thing that currently limits multi-provider plans in the UI is the `PremiumProvider` enum in `tg-bot-service`, which only lists `OPENAI`. Adding Anthropic there is one line.
-
----
-
-## How to add a new AI model
-
-Adding a model means it becomes selectable in the bot's model menu and gets a request cost.
-
-**Step 1.** Add the model to `subscription-service/src/main/resources/application.yml`:
-
-```yaml
-subscription:
-  model-providers:
-    gpt-4o-mini: openai
-    gpt-4o: openai
-    gpt-4-turbo: openai
-    o1-mini: openai          # new
-
-  model-costs:
-    gpt-4o-mini: 1
-    gpt-4o: 2
-    gpt-4-turbo: 3
-    o1-mini: 2               # new
-```
-
-**Step 2.** Add the model to the `OPENAI` entry in `tg-bot-service/src/main/kotlin/com/xeno/subpilot/tgbot/ux/AiProvider.kt`:
-
-```kotlin
-OPENAI(
-    "֎ OpenAI",
-    "openai",
-    listOf(
-        AiModel("gpt-4o", "GPT-4o"),
-        AiModel("gpt-4o-mini", "GPT-4o mini"),
-        AiModel("gpt-4-turbo", "GPT-4 Turbo"),
-        AiModel("o1-mini", "o1 mini"),    // new
-    ),
-),
-```
-
-The `AiModel` constructor takes the model ID (passed to OpenAI) and the display name (shown in the bot). After restart, the model appears in the bot's model selection menu.
-
----
-
-## How to add a new AI provider
-
-Adding a provider that is separate from OpenAI — say, a self-hosted model — requires changes in several places. The pattern is consistent: add the provider key everywhere the existing `openai` key appears.
-
-**subscription-service** — add models and their costs:
-
-```yaml
-subscription:
-  model-providers:
-    gpt-4o-mini: openai
-    custom-7b: custom          # new model → new provider key
-
-  model-costs:
-    gpt-4o-mini: 1
-    custom-7b: 1               # new
-```
-
-Add a plan that allocates requests to the new provider (see [How to add a subscription plan](#how-to-add-a-subscription-plan)).
-
-**tg-bot-service** — register the provider in `AiProvider.kt` so users can select it and models under it:
-
-```kotlin
-enum class AiProvider(
-    val displayName: String,
-    val providerKey: String,
-    val models: List<AiModel>,
-) {
-    OPENAI("֎ OpenAI", "openai", listOf(...)),
-    CUSTOM("⚡ Custom", "custom", listOf(         // new
-        AiModel("custom-7b", "Custom 7B"),
-    )),
-}
-```
-
-Also add it to `PremiumProvider.kt` so it appears in the Premium subscription menu:
-
-```kotlin
-enum class PremiumProvider(val displayName: String, val planProviderKey: String) {
-    OPENAI("֎ OpenAI", "openai"),
-    CUSTOM("⚡ Custom", "custom"),    // new
-}
-```
-
-**chat-service** — implement the actual API call. The service currently only knows how to call OpenAI. You would add a new client class for the new provider and update the dispatch logic in `ChatServiceGrpc` to route based on the model's provider.
-
----
-
-## Local run
+### 2) Configure env
 
 ```bash
 cp .env.example .env
-# fill in TELEGRAM_BOT_TOKEN, OPENAI_API_KEY, REDIS_PASSWORD,
-# SUBSCRIPTION_DB_PASSWORD, PAYMENT_DB_PASSWORD, LOYALTY_DB_PASSWORD,
-# ADMIN_DB_PASSWORD, YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY, YOOKASSA_RETURN_URL,
-# ADMIN_JWT_SECRET, ADMIN_AUTH_JWT_SECRET, NGINX_SERVER_NAME
+```
+
+Fill at least required secrets:
+
+- `TELEGRAM_BOT_TOKEN`
+- `OPENAI_API_KEY`
+- `YOOKASSA_SHOP_ID`
+- `YOOKASSA_SECRET_KEY`
+- `YOOKASSA_RETURN_URL`
+- `ADMIN_JWT_SECRET`
+- `ADMIN_AUTH_JWT_SECRET`
+- DB passwords (`SUBSCRIPTION_DB_PASSWORD`, `PAYMENT_DB_PASSWORD`, `LOYALTY_DB_PASSWORD`, `ADMIN_DB_PASSWORD`)
+
+### 3) Start stack
+
+```bash
 docker compose up --build
 ```
 
-Logs are written to `<service-name>.log` files in the project root.
+### 4) Useful URLs
 
-| URL | What |
-|---|---|
-| `http://localhost:8090` | Kafka UI (browse topics and messages) |
-| `http://localhost:3000` | Grafana (dashboards, default password in `GRAFANA_ADMIN_PASSWORD`) |
-| `http://localhost:9090` | Prometheus (raw metrics) |
-| `https://<NGINX_SERVER_NAME>/api/v1/` | Public API via Nginx + gateway-service |
+- Kafka UI: `http://localhost:8090`
+- Grafana: `http://localhost:3000`
+- Prometheus: `http://localhost:9090`
+- Public API entrypoint: `https://<NGINX_SERVER_NAME>/api/v1/`
 
-### YooKassa webhook in local development
+---
 
-YooKassa needs a public HTTPS URL to send webhook events. For local testing, expose `payment-service` with a tunnel (e.g. `ngrok http 8084`) and set `YOOKASSA_RETURN_URL` to the tunnel URL. Configure the webhook URL in your YooKassa dashboard to point to `https://<tunnel>/webhook/payment`.
+## Admin API usage (through gateway)
 
-### Admin API
+Optional bootstrap admin in `.env`:
 
-Public admin traffic goes to `gateway-service` (port 8088), which provides JWT auth endpoints and proxies admin requests to `admin-service`.
+- `ADMIN_BOOTSTRAP_USERNAME`
+- `ADMIN_BOOTSTRAP_PASSWORD`
 
-Route prefix → service:
-
-- `/api/v1/auth/**` → `admin-service` (login, refresh)
-- `/api/v1/admin/**` → `admin-service` (user management, audit log)
-
-Authorization policy:
-
-- `GET /api/v1/admin/**` requires `admin.read` or `admin.write`
-- `POST|PUT|PATCH|DELETE /api/v1/admin/**` requires `admin.write`
-
-Bootstrap admin (optional, for local/dev):
+Login:
 
 ```bash
-export ADMIN_BOOTSTRAP_USERNAME=admin
-export ADMIN_BOOTSTRAP_PASSWORD='change-me'
+curl -s 'https://<host>/api/v1/auth/login' \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"change-me"}'
 ```
 
-Login and call admin API:
+Use `accessToken` for admin endpoints:
 
 ```bash
-TOKENS_JSON="$(curl -s 'https://<host>/api/v1/auth/login' \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"change-me"}')"
-
-ACCESS_TOKEN="$(echo "$TOKENS_JSON" | jq -r '.accessToken')"
-
-curl "https://<host>/api/v1/admin/audit?page=0&size=20" \
-  -H "Authorization: Bearer $ACCESS_TOKEN"
-```
-
-Refresh token:
-
-```bash
-REFRESH_TOKEN="$(echo "$TOKENS_JSON" | jq -r '.refreshToken')"
-
-curl -s 'https://<host>/api/v1/auth/refresh' \
-  -H 'Content-Type: application/json' \
-  -d "{\"refreshToken\":\"$REFRESH_TOKEN\"}"
+curl 'https://<host>/api/v1/admin/audit?page=0&size=20' \
+  -H 'Authorization: Bearer <accessToken>'
 ```
 
 ---
 
-## Build and tests
+## Environment reference
+
+`/.env.example` is the source of truth. Highlights:
+
+### Required for normal run
+
+- Telegram/OpenAI: `TELEGRAM_BOT_TOKEN`, `OPENAI_API_KEY`
+- Payment: `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY`, `YOOKASSA_RETURN_URL`
+- Security: `ADMIN_JWT_SECRET`, `ADMIN_AUTH_JWT_SECRET`
+- Persistence: all `*_DB_PASSWORD`
+
+### Important optional tuning
+
+- gRPC retries: `GRPC_RETRY_*`
+- Free tier behavior: `SUBSCRIPTION_FREE_QUOTA`, `SUBSCRIPTION_FREE_QUOTA_RESET_PERIOD`
+- JWT TTL: `ADMIN_AUTH_ACCESS_TTL_SECONDS`, `ADMIN_AUTH_REFRESH_TTL_SECONDS`, `GATEWAY_INTERNAL_JWT_TTL_SECONDS`
+- Bot long-polling: `TELEGRAM_POLLING_TIMEOUT`, `TELEGRAM_POLLING_RETRY_DELAY_MS`
+- Observability/UI: `GRAFANA_ADMIN_PASSWORD`
+
+---
+
+## Build, test, lint
 
 ```bash
-# Build, skip tests and lint
-./gradlew build -x test -x ktlintCheck
-
-# Run all tests
+# Full test run
 ./gradlew test
 
-# Run tests for one service
-./gradlew :tg-bot-service:test
+# One service tests
+./gradlew :payment-service:test
 
-# Run a single test class
-./gradlew :tg-bot-service:test --tests "com.xeno.subpilot.tgbot.SomeTest"
-
-# Lint check
+# Lint
 ./gradlew ktlintCheck
 
 # Auto-format
 ./gradlew ktlintFormat
+
+# License headers
+./gradlew spotlessCheck
+
+# Coverage reports
+./gradlew jacocoTestReport
 ```
 
-Tests are split into three folders per service:
+---
 
-- `unittests/` — pure unit tests with MockK, no I/O
-- `integrationtests/` — Spring context or WireMock (for external HTTP calls like Telegram, OpenAI, YooKassa)
-- `testcontainers/` — tests that need real PostgreSQL, Redis, or Kafka
+## How to present this on an interview
+
+Good narrative for a junior fintech interview:
+
+1. Explain one reliability problem and your solution (outbox + idempotency).
+2. Show one security boundary decision (public edge in Nginx + scoped JWT in gateway).
+3. Show one operability decision (metrics/alerts you would watch in production).
+4. Show one quality decision (CI gates + coverage threshold + testcontainers).
+5. Discuss one tradeoff and next step (for example: add distributed tracing, add contract tests, move secrets to Vault).
 
 ---
 
