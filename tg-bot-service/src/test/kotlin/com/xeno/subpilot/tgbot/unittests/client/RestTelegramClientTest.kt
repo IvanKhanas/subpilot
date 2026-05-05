@@ -65,7 +65,7 @@ class RestTelegramClientTest {
 
     private lateinit var client: RestTelegramClient
 
-    private enum class ApiFailureCase {
+    enum class ApiFailureCase {
         SEND_MESSAGE,
         ANSWER_CALLBACK,
         SET_MY_COMMANDS,
@@ -77,7 +77,7 @@ class RestTelegramClientTest {
         const val BOOM_MESSAGE = "boom"
         const val CHAT_ID = 99L
         const val MESSAGE_ID = 7L
-        const val UPDATE_OFFSET = 5
+        const val UPDATE_OFFSET = 5L
         const val UPDATE_TIMEOUT = 30
         const val TEXT_HELLO = "hello"
         const val TEXT_UPDATED = "updated"
@@ -126,7 +126,7 @@ class RestTelegramClientTest {
         val result = client.getUpdates(offset = UPDATE_OFFSET, timeout = UPDATE_TIMEOUT)
 
         assertEquals(updates, result)
-        assertEquals(UPDATE_OFFSET.toLong(), bodySlot.captured["offset"])
+        assertEquals(UPDATE_OFFSET, bodySlot.captured["offset"])
         assertEquals(UPDATE_TIMEOUT, bodySlot.captured["timeout"])
         assertEquals(listOf("message", "callback_query"), bodySlot.captured["allowed_updates"])
         verify { requestBodyUriSpec.uri("/getUpdates") }
