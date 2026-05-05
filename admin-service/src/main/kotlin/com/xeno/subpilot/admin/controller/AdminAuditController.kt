@@ -25,7 +25,9 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/admin/audit")
-class AdminAuditController(private val auditService: AuditService) {
+class AdminAuditController(
+    private val auditService: AuditService,
+) {
 
     @GetMapping
     fun getAuditLog(pageable: Pageable): Page<AuditLogResponse> =

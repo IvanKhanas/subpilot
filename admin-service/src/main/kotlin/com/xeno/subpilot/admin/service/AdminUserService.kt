@@ -15,14 +15,15 @@
  */
 package com.xeno.subpilot.admin.service
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.xeno.subpilot.admin.client.LoyaltyAdminGrpcClient
-import com.xeno.subpilot.admin.client.SubscriptionAdminGrpcClient
+import com.xeno.subpilot.admin.client.LoyaltyAdminClient
+import com.xeno.subpilot.admin.client.SubscriptionAdminClient
+import com.xeno.subpilot.admin.dto.AddSubscriptionRequest
 import com.xeno.subpilot.admin.dto.AdjustLoyaltyRequest
 import com.xeno.subpilot.admin.dto.UserInfoResponse
 import com.xeno.subpilot.admin.entity.AdminAction
 import com.xeno.subpilot.admin.entity.AdminTargetType
 import org.springframework.stereotype.Service
+import tools.jackson.databind.ObjectMapper
 
 import java.time.Instant
 import java.time.ZoneOffset
@@ -30,8 +31,8 @@ import java.time.format.DateTimeFormatter
 
 @Service
 class AdminUserService(
-    private val subscriptionClient: SubscriptionAdminGrpcClient,
-    private val loyaltyClient: LoyaltyAdminGrpcClient,
+    private val subscriptionClient: SubscriptionAdminClient,
+    private val loyaltyClient: LoyaltyAdminClient,
     private val auditService: AuditService,
     private val objectMapper: ObjectMapper,
 ) {
@@ -48,16 +49,21 @@ class AdminUserService(
             userId = userId,
             blocked = info.blocked,
             role = info.role,
-            registeredAt = Instant.ofEpochSecond(info.registeredAtEpoch)
-                .atOffset(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
+            registeredAt =
+                Instant
+                    .ofEpochSecond(info.registeredAtEpoch)
+                    .atOffset(ZoneOffset.UTC)
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
             loyaltyPoints = loyaltyPoints,
             freeRequestsRemaining = freeRequests,
             paidRequestsRemaining = paidRequests,
         )
     }
 
-    suspend fun banUser(operator: String, userId: Long) {
+    suspend fun banUser(
+        operator: String,
+        userId: Long,
+    ) {
         subscriptionClient.blockUser(userId)
         auditService.record(
             operator = operator,
@@ -67,7 +73,10 @@ class AdminUserService(
         )
     }
 
-    suspend fun unbanUser(operator: String, userId: Long) {
+    suspend fun unbanUser(
+        operator: String,
+        userId: Long,
+    ) {
         subscriptionClient.unblockUser(userId)
         auditService.record(
             operator = operator,
@@ -77,7 +86,30 @@ class AdminUserService(
         )
     }
 
-    suspend fun adjustLoyalty(operator: String, userId: Long, request: AdjustLoyaltyRequest) {
+    suspend fun addSubscription(
+        operator: String,
+        userId: Long,
+        request: AddSubscriptionRequest,
+    ) {
+        subscriptionClient.activateSubscription(
+            userId = userId,
+            planId = request.planId,
+            idempotencyKey = request.idempotencyKey,
+        )
+        auditService.record(
+            operator = operator,
+            action = AdminAction.ADD_SUBSCRIPTION,
+            targetType = AdminTargetType.USER,
+            targetId = userId.toString(),
+            payload = objectMapper.writeValueAsString(request),
+        )
+    }
+
+    suspend fun adjustLoyalty(
+        operator: String,
+        userId: Long,
+        request: AdjustLoyaltyRequest,
+    ) {
         loyaltyClient.adjustPoints(
             userId = userId,
             delta = request.delta,

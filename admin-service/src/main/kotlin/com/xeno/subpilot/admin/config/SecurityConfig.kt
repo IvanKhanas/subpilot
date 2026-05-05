@@ -22,7 +22,15 @@ import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator
+import org.springframework.security.oauth2.core.OAuth2Error
+import org.springframework.security.oauth2.core.OAuth2TokenValidator
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult
+import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.JwtDecoder
+import org.springframework.security.oauth2.jwt.JwtValidators
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.web.SecurityFilterChain
 
@@ -30,10 +38,12 @@ import javax.crypto.spec.SecretKeySpec
 
 @Configuration
 @EnableWebSecurity
-class SecurityConfig {
+class SecurityConfig(
+    private val adminAuthProperties: AdminAuthProperties,
+) {
 
     @Bean
-    fun jwtDecoder(
+    fun internalJwtDecoder(
         @Value("\${spring.security.oauth2.resourceserver.jwt.secret}") secret: String,
     ): JwtDecoder {
         val key = SecretKeySpec(secret.toByteArray(Charsets.UTF_8), "HmacSHA256")
@@ -41,17 +51,78 @@ class SecurityConfig {
     }
 
     @Bean
-    fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
+    fun refreshJwtDecoder(): JwtDecoder {
+        val key =
+            SecretKeySpec(adminAuthProperties.jwt.secret.toByteArray(Charsets.UTF_8), "HmacSHA256")
+        val decoder = NimbusJwtDecoder.withSecretKey(key).build()
+        decoder.setJwtValidator(
+            DelegatingOAuth2TokenValidator(
+                JwtValidators.createDefaultWithIssuer(adminAuthProperties.jwt.issuer),
+                AudienceValidator(adminAuthProperties.jwt.audience),
+                TokenTypeValidator("refresh"),
+            ),
+        )
+        return decoder
+    }
+
+    @Bean
+    fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
+
+    @Bean
+    fun securityFilterChain(
+        http: HttpSecurity,
+        internalJwtDecoder: JwtDecoder,
+    ): SecurityFilterChain {
         http
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->
                 auth
-                    .requestMatchers(HttpMethod.GET, "/admin/**").hasAuthority("SCOPE_admin.read")
-                    .requestMatchers(HttpMethod.POST, "/admin/**").hasAuthority("SCOPE_admin.write")
-                    .anyRequest().authenticated()
-            }
-            .oauth2ResourceServer { it.jwt { } }
+                    .requestMatchers("/actuator/health", "/actuator/prometheus")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/admin/**")
+                    .hasAnyAuthority("SCOPE_admin.read", "SCOPE_admin.write")
+                    .requestMatchers("/admin/**")
+                    .hasAuthority("SCOPE_admin.write")
+                    .anyRequest()
+                    .authenticated()
+            }.oauth2ResourceServer { it.jwt { jwt -> jwt.decoder(internalJwtDecoder) } }
         return http.build()
+    }
+}
+
+private class AudienceValidator(
+    private val requiredAudience: String,
+) : OAuth2TokenValidator<Jwt> {
+
+    override fun validate(token: Jwt): OAuth2TokenValidatorResult =
+        if (token.audience.contains(requiredAudience)) {
+            OAuth2TokenValidatorResult.success()
+        } else {
+            OAuth2TokenValidatorResult.failure(
+                OAuth2Error(
+                    "invalid_token",
+                    "Required audience '$requiredAudience' is missing",
+                    null,
+                ),
+            )
+        }
+}
+
+private class TokenTypeValidator(
+    private val expectedType: String,
+) : OAuth2TokenValidator<Jwt> {
+
+    override fun validate(token: Jwt): OAuth2TokenValidatorResult {
+        val tokenType = token.getClaimAsString("token_type")
+        return if (tokenType == expectedType) {
+            OAuth2TokenValidatorResult.success()
+        } else {
+            OAuth2TokenValidatorResult.failure(
+                OAuth2Error("invalid_token", "Expected token_type '$expectedType'", null),
+            )
+        }
     }
 }

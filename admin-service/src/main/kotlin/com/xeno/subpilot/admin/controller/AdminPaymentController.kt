@@ -24,7 +24,9 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/admin/payment")
-class AdminPaymentController(private val adminPaymentService: AdminPaymentService) {
+class AdminPaymentController(
+    private val adminPaymentService: AdminPaymentService,
+) {
 
     @PostMapping("/outbox/flush")
     suspend fun flushOutbox(

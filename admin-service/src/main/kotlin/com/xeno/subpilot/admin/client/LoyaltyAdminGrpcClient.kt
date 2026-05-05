@@ -23,12 +23,12 @@ import org.springframework.stereotype.Component
 @Component
 class LoyaltyAdminGrpcClient(
     private val stub: LoyaltyServiceGrpcKt.LoyaltyServiceCoroutineStub,
-) {
+) : LoyaltyAdminClient {
 
-    suspend fun getBalance(userId: Long): Long =
+    override suspend fun getBalance(userId: Long): Long =
         stub.getBalance(getBalanceRequest { this.userId = userId }).points
 
-    suspend fun adjustPoints(
+    override suspend fun adjustPoints(
         userId: Long,
         delta: Long,
         reason: String,

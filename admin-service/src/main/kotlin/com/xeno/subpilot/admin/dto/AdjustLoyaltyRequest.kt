@@ -21,8 +21,10 @@ import jakarta.validation.constraints.NotNull
 data class AdjustLoyaltyRequest(
     @field:NotNull
     val delta: Long,
+
     @field:NotBlank
     val reason: String,
+
     @field:NotBlank
     val idempotencyKey: String,
 )

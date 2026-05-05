@@ -20,4 +20,6 @@ enum class AdminAction {
     UNBAN_USER,
     ADJUST_LOYALTY,
     TRIGGER_OUTBOX_FLUSH,
+    ADD_SUBSCRIPTION,
+    CREATE_PLAN,
 }

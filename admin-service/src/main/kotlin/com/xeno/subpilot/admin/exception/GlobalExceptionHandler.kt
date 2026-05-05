@@ -29,13 +29,20 @@ private val logger = KotlinLogging.logger {}
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
+    @ExceptionHandler(AuthException::class)
+    fun handleAuth(ex: AuthException): ProblemDetail =
+        ProblemDetail.forStatusAndDetail(ex.status, ex.message)
+
     @ExceptionHandler(UserNotFoundException::class)
     fun handleUserNotFound(ex: UserNotFoundException): ProblemDetail =
         ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.message ?: "User not found")
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleValidation(ex: MethodArgumentNotValidException): ProblemDetail {
-        val detail = ex.bindingResult.fieldErrors.joinToString("; ") { "${it.field}: ${it.defaultMessage}" }
+        val detail =
+            ex.bindingResult.fieldErrors.joinToString(
+                "; ",
+            ) { "${it.field}: ${it.defaultMessage}" }
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail)
     }
 
@@ -45,13 +52,17 @@ class GlobalExceptionHandler {
             message = "admin_grpc_call_failed"
             cause = ex
         }
-        val httpStatus = when (ex.status.code) {
-            Status.Code.NOT_FOUND -> HttpStatus.NOT_FOUND
-            Status.Code.INVALID_ARGUMENT -> HttpStatus.BAD_REQUEST
-            Status.Code.ALREADY_EXISTS -> HttpStatus.CONFLICT
-            else -> HttpStatus.BAD_GATEWAY
-        }
-        return ProblemDetail.forStatusAndDetail(httpStatus, ex.status.description ?: "Upstream service error")
+        val httpStatus =
+            when (ex.status.code) {
+                Status.Code.NOT_FOUND -> HttpStatus.NOT_FOUND
+                Status.Code.INVALID_ARGUMENT -> HttpStatus.BAD_REQUEST
+                Status.Code.ALREADY_EXISTS -> HttpStatus.CONFLICT
+                else -> HttpStatus.BAD_GATEWAY
+            }
+        return ProblemDetail.forStatusAndDetail(
+            httpStatus,
+            ex.status.description ?: "Upstream service error",
+        )
     }
 
     @ExceptionHandler(Exception::class)

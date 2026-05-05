@@ -15,14 +15,14 @@
  */
 package com.xeno.subpilot.admin.service
 
-import com.xeno.subpilot.admin.client.PaymentAdminGrpcClient
+import com.xeno.subpilot.admin.client.PaymentAdminClient
 import com.xeno.subpilot.admin.entity.AdminAction
 import com.xeno.subpilot.admin.entity.AdminTargetType
 import org.springframework.stereotype.Service
 
 @Service
 class AdminPaymentService(
-    private val paymentClient: PaymentAdminGrpcClient,
+    private val paymentClient: PaymentAdminClient,
     private val auditService: AuditService,
 ) {
 

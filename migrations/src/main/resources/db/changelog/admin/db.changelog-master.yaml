@@ -1,3 +1,5 @@
 databaseChangeLog:
   - include:
       file: db/changelog/admin/changes/v1-init.sql
+  - include:
+      file: db/changelog/admin/changes/v2-admin-account.sql

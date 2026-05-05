@@ -15,6 +15,7 @@
  */
 package com.xeno.subpilot.admin.controller
 
+import com.xeno.subpilot.admin.dto.AddSubscriptionRequest
 import com.xeno.subpilot.admin.dto.AdjustLoyaltyRequest
 import com.xeno.subpilot.admin.dto.UserInfoResponse
 import com.xeno.subpilot.admin.service.AdminUserService
@@ -31,7 +32,9 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/admin/users")
-class AdminUserController(private val adminUserService: AdminUserService) {
+class AdminUserController(
+    private val adminUserService: AdminUserService,
+) {
 
     @GetMapping("/{userId}")
     suspend fun getUser(
@@ -53,6 +56,16 @@ class AdminUserController(private val adminUserService: AdminUserService) {
         @AuthenticationPrincipal jwt: Jwt,
     ): ResponseEntity<Unit> {
         adminUserService.unbanUser(operator = jwt.subject, userId = userId)
+        return ResponseEntity.ok().build()
+    }
+
+    @PostMapping("/{userId}/subscription")
+    suspend fun addSubscription(
+        @PathVariable userId: Long,
+        @Valid @RequestBody request: AddSubscriptionRequest,
+        @AuthenticationPrincipal jwt: Jwt,
+    ): ResponseEntity<Unit> {
+        adminUserService.addSubscription(operator = jwt.subject, userId = userId, request = request)
         return ResponseEntity.ok().build()
     }
 

@@ -18,4 +18,5 @@ package com.xeno.subpilot.admin.entity
 enum class AdminTargetType {
     USER,
     PAYMENT,
+    PLAN,
 }

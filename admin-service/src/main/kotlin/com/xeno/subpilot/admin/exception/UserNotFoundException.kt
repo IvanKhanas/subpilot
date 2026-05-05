@@ -15,4 +15,6 @@
  */
 package com.xeno.subpilot.admin.exception
 
-class UserNotFoundException(userId: Long) : RuntimeException("User $userId not found")
+class UserNotFoundException(
+    userId: Long,
+) : RuntimeException("User $userId not found")

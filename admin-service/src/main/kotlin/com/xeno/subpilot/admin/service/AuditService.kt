@@ -25,7 +25,9 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class AuditService(private val auditLogRepository: AuditLogRepository) {
+class AuditService(
+    private val auditLogRepository: AuditLogRepository,
+) {
 
     @Transactional
     fun record(

@@ -29,7 +29,20 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          secret: ${ADMIN_JWT_SECRET:changeme-dev-secret-at-least-32-chars!}
+          secret: ${ADMIN_JWT_SECRET}
+
+admin:
+  auth:
+    jwt:
+      secret: ${ADMIN_AUTH_JWT_SECRET}
+      issuer: ${ADMIN_AUTH_JWT_ISSUER:subpilot-admin}
+      audience: ${ADMIN_AUTH_JWT_AUDIENCE:subpilot-api}
+      access-ttl-seconds: ${ADMIN_AUTH_ACCESS_TTL_SECONDS:900}
+      refresh-ttl-seconds: ${ADMIN_AUTH_REFRESH_TTL_SECONDS:1209600}
+    bootstrap:
+      username: ${ADMIN_BOOTSTRAP_USERNAME:}
+      password: ${ADMIN_BOOTSTRAP_PASSWORD:}
+      scopes: ${ADMIN_BOOTSTRAP_SCOPES:admin.read admin.write}
 
 server:
   port: ${ADMIN_SERVER_PORT:8086}
@@ -46,3 +59,6 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        "[http.server.requests]": true

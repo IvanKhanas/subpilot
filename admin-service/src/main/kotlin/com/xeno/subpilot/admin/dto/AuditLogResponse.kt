@@ -31,14 +31,15 @@ data class AuditLogResponse(
     companion object {
         private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-        fun from(entity: AuditLog) = AuditLogResponse(
-            id = entity.id!!,
-            operator = entity.operator,
-            action = entity.action.name,
-            targetType = entity.targetType.name,
-            targetId = entity.targetId,
-            payload = entity.payload,
-            createdAt = entity.createdAt.format(formatter),
-        )
+        fun from(entity: AuditLog) =
+            AuditLogResponse(
+                id = entity.id!!,
+                operator = entity.operator,
+                action = entity.action.name,
+                targetType = entity.targetType.name,
+                targetId = entity.targetId,
+                payload = entity.payload,
+                createdAt = entity.createdAt.format(formatter),
+            )
     }
 }

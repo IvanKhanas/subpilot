@@ -1,6 +1,7 @@
 plugins {
     java
     jacoco
+    id("subpilot.jacoco-conventions")
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
@@ -21,6 +22,7 @@ dependencies {
     implementation(libs.spring.grpc.starter)
     implementation(libs.grpc.kotlin.stub)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.reactor)
     implementation(libs.kotlin.logging)
     implementation(libs.liquibase.core)
     implementation(libs.jackson.module.kotlin)
@@ -38,5 +40,6 @@ dependencies {
     testImplementation(libs.testcontainers)
     testImplementation(libs.testcontainers.junit5)
     testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.springmockk)
     testRuntimeOnly(libs.junit.platform.launcher)
 }

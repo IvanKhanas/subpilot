@@ -22,8 +22,8 @@ import org.springframework.stereotype.Component
 @Component
 class PaymentAdminGrpcClient(
     private val stub: PaymentServiceGrpcKt.PaymentServiceCoroutineStub,
-) {
+) : PaymentAdminClient {
 
-    suspend fun triggerOutboxFlush(): Int =
+    override suspend fun triggerOutboxFlush(): Int =
         stub.triggerOutboxFlush(TriggerOutboxFlushRequest.getDefaultInstance()).flushedCount
 }
