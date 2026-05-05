@@ -439,7 +439,9 @@ enum class PremiumProvider(val displayName: String, val planProviderKey: String)
 cp .env.example .env
 # fill in TELEGRAM_BOT_TOKEN, OPENAI_API_KEY, REDIS_PASSWORD,
 # SUBSCRIPTION_DB_PASSWORD, PAYMENT_DB_PASSWORD, LOYALTY_DB_PASSWORD,
-# YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY, YOOKASSA_RETURN_URL
+# YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY, YOOKASSA_RETURN_URL,
+# ADMIN_JWT_SECRET,
+# ADMIN_AUTH_JWT_SECRET
 docker compose up --build
 ```
 
@@ -450,6 +452,51 @@ Kafka UI (browse topics and messages): `http://localhost:8090`
 ### YooKassa webhook in local development
 
 YooKassa needs a public HTTPS URL to send webhook events. For local testing, expose `payment-service` with a tunnel (e.g. `ngrok http 8084`) and set `YOOKASSA_RETURN_URL` to the tunnel URL. Configure the webhook URL in your YooKassa dashboard to point to `https://<tunnel>/webhook/payment`.
+
+### Gateway auth for web and API
+
+Public admin traffic goes to `gateway-service` (`/api/v1/**`). The gateway provides its own auth endpoints and issues JWT access/refresh tokens.
+
+Current route:
+
+- `/api/v1/admin/**` -> `admin-service`
+
+Authorization policy in gateway:
+
+- `GET /api/v1/admin/**` requires `admin.read` or `admin.write`
+- `POST|PUT|PATCH|DELETE /api/v1/admin/**` requires `admin.write`
+
+Bootstrap admin (optional, for local/dev):
+
+```bash
+export ADMIN_BOOTSTRAP_USERNAME=admin
+export ADMIN_BOOTSTRAP_PASSWORD='change-me'
+```
+
+Login and call admin API:
+
+```bash
+TOKENS_JSON="$(curl -s 'https://<host>/api/v1/auth/login' \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"change-me"}')"
+
+ACCESS_TOKEN="$(echo "$TOKENS_JSON" | jq -r '.accessToken')"
+
+curl "https://<host>/api/v1/admin/audit?page=0&size=20" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Refresh token:
+
+```bash
+REFRESH_TOKEN="$(echo "$TOKENS_JSON" | jq -r '.refreshToken')"
+
+curl -s 'https://<host>/api/v1/auth/refresh' \
+  -H 'Content-Type: application/json' \
+  -d "{\"refreshToken\":\"$REFRESH_TOKEN\"}"
+```
+
+This flow works for both direct API clients and future web admin UI.
 
 ---
 
