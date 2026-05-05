@@ -82,7 +82,8 @@ class SubscriptionActivatedConsumerTest {
         } returns
             event
         val textSlot = slot<String>()
-        every { telegramClient.sendMessage(userId, capture(textSlot), any(), any()) } returns sentMessageId
+        every { telegramClient.sendMessage(userId, capture(textSlot), any(), any()) } returns
+            sentMessageId
 
         consumer.consume("event-json")
 
@@ -109,7 +110,8 @@ class SubscriptionActivatedConsumerTest {
         } returns
             event
         val chatIdSlot = slot<Long>()
-        every { telegramClient.sendMessage(capture(chatIdSlot), any(), any(), any()) } returns sentMessageId
+        every { telegramClient.sendMessage(capture(chatIdSlot), any(), any(), any()) } returns
+            sentMessageId
 
         consumer.consume("event-json")
 

@@ -284,15 +284,15 @@ class SubscriptionGrpcClientTest {
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(ToggleOperation::class)
-    fun `block and unblock complete when gRPC call succeeds`(
-        operation: ToggleOperation,
-    ) {
+    fun `block and unblock complete when gRPC call succeeds`(operation: ToggleOperation) {
         when (operation) {
             ToggleOperation.BLOCK -> {
-                coEvery { stub.blockUser(any(), any()) } returns BlockUserResponse.getDefaultInstance()
+                coEvery { stub.blockUser(any(), any()) } returns
+                    BlockUserResponse.getDefaultInstance()
             }
             ToggleOperation.UNBLOCK -> {
-                coEvery { stub.unblockUser(any(), any()) } returns UnblockUserResponse.getDefaultInstance()
+                coEvery { stub.unblockUser(any(), any()) } returns
+                    UnblockUserResponse.getDefaultInstance()
             }
         }
 
@@ -306,12 +306,11 @@ class SubscriptionGrpcClientTest {
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(FailingOperation::class)
-    fun `throws SubscriptionServiceException for failing gRPC calls`(
-        operation: FailingOperation,
-    ) {
+    fun `throws SubscriptionServiceException for failing gRPC calls`(operation: FailingOperation) {
         when (operation) {
             FailingOperation.SET_MODEL_PREFERENCE -> {
-                coEvery { stub.setModelPreference(any(), any()) } throws StatusException(Status.UNAVAILABLE)
+                coEvery { stub.setModelPreference(any(), any()) } throws
+                    StatusException(Status.UNAVAILABLE)
             }
             FailingOperation.GET_PLANS -> {
                 coEvery { stub.getPlans(any(), any()) } throws StatusException(Status.UNAVAILABLE)
@@ -323,14 +322,19 @@ class SubscriptionGrpcClientTest {
                 coEvery { stub.blockUser(any(), any()) } throws StatusException(Status.UNAVAILABLE)
             }
             FailingOperation.UNBLOCK_USER -> {
-                coEvery { stub.unblockUser(any(), any()) } throws StatusException(Status.UNAVAILABLE)
+                coEvery { stub.unblockUser(any(), any()) } throws
+                    StatusException(Status.UNAVAILABLE)
             }
         }
 
         assertThrows<SubscriptionServiceException> {
             runBlocking {
                 when (operation) {
-                    FailingOperation.SET_MODEL_PREFERENCE -> client.setModelPreference(userId, modelId)
+                    FailingOperation.SET_MODEL_PREFERENCE ->
+                        client.setModelPreference(
+                            userId,
+                            modelId,
+                        )
                     FailingOperation.GET_PLANS -> client.getPlans()
                     FailingOperation.GET_BALANCE -> client.getBalance(userId)
                     FailingOperation.BLOCK_USER -> client.blockUser(userId)

@@ -72,7 +72,12 @@ class DeclineBonusSpendCallbackHandlerTest {
                 CallbackQuery(
                     id = callbackId,
                     from = User(id = userId),
-                    message = Message(messageId = messageId, chat = Chat(id = chatId), text = "prompt-text"),
+                    message =
+                        Message(
+                            messageId = messageId,
+                            chat = Chat(id = chatId),
+                            text = "prompt-text",
+                        ),
                     data = "bonus_no:openai-basic",
                 )
 

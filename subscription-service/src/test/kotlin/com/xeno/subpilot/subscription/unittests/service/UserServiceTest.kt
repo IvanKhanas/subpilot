@@ -123,6 +123,9 @@ class UserServiceTest {
 
         service.registerUser(userId)
 
-        assertEquals(expectedCounterValue, meterRegistry.counter("user_registrations_total").count())
+        assertEquals(
+            expectedCounterValue,
+            meterRegistry.counter("user_registrations_total").count(),
+        )
     }
 }

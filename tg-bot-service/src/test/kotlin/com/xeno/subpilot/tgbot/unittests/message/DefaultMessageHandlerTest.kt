@@ -42,9 +42,11 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 
-import kotlinx.coroutines.test.runTest
 import java.util.stream.Stream
+
 import kotlin.test.assertTrue
+
+import kotlinx.coroutines.test.runTest
 
 @ExtendWith(MockKExtension::class)
 class DefaultMessageHandlerTest {
@@ -90,7 +92,8 @@ class DefaultMessageHandlerTest {
     @Test
     fun `forwards message to chat service and sends response to user`() =
         runTest {
-            val message = Message(chat = Chat(id = chatId), from = User(id = userId), text = inputText)
+            val message =
+                Message(chat = Chat(id = chatId), from = User(id = userId), text = inputText)
             coEvery { waitingIndicator.wrap(any(), capture(blockSlot)) } coAnswers
                 { blockSlot.captured() }
             coEvery { chatClient.processMessage(userId, chatId, inputText) } returns
@@ -112,7 +115,8 @@ class DefaultMessageHandlerTest {
     @Test
     fun `sends AI unavailable response when chat service throws ChatServiceException`() =
         runTest {
-            val message = Message(chat = Chat(id = chatId), from = User(id = userId), text = inputText)
+            val message =
+                Message(chat = Chat(id = chatId), from = User(id = userId), text = inputText)
             coEvery { waitingIndicator.wrap(any(), capture(blockSlot)) } coAnswers
                 { blockSlot.captured() }
             coEvery { chatClient.processMessage(userId, chatId, inputText) } throws
@@ -135,30 +139,31 @@ class DefaultMessageHandlerTest {
         caseName: String,
         denialReason: DenialReason,
         expectedText: String,
-    ) =
-        runTest {
-            assertTrue(caseName.isNotBlank())
-            val message = Message(chat = Chat(id = chatId), from = User(id = userId), text = inputText)
-            coEvery { waitingIndicator.wrap(any(), capture(blockSlot)) } coAnswers
-                { blockSlot.captured() }
-            coEvery { chatClient.processMessage(userId, chatId, inputText) } returns
-                deniedResponse(denialReason)
-            every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
+    ) = runTest {
+        assertTrue(caseName.isNotBlank())
+        val message =
+            Message(chat = Chat(id = chatId), from = User(id = userId), text = inputText)
+        coEvery { waitingIndicator.wrap(any(), capture(blockSlot)) } coAnswers
+            { blockSlot.captured() }
+        coEvery { chatClient.processMessage(userId, chatId, inputText) } returns
+            deniedResponse(denialReason)
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
 
-            handler.handle(message)
+        handler.handle(message)
 
-            verify(exactly = 1) {
-                telegramClient.sendMessage(
-                    chatId = chatId,
-                    text = expectedText,
-                )
-            }
+        verify(exactly = 1) {
+            telegramClient.sendMessage(
+                chatId = chatId,
+                text = expectedText,
+            )
         }
+    }
 
     @Test
     fun `sends no subscription response with model name when access denied with NO_SUBSCRIPTION`() =
         runTest {
-            val message = Message(chat = Chat(id = chatId), from = User(id = userId), text = inputText)
+            val message =
+                Message(chat = Chat(id = chatId), from = User(id = userId), text = inputText)
             coEvery { waitingIndicator.wrap(any(), capture(blockSlot)) } coAnswers
                 { blockSlot.captured() }
             coEvery { chatClient.processMessage(userId, chatId, inputText) } returns
@@ -188,15 +193,14 @@ class DefaultMessageHandlerTest {
     fun `ignores invalid messages`(
         caseName: String,
         message: Message,
-    ) =
-        runTest {
-            assertTrue(caseName.isNotBlank())
+    ) = runTest {
+        assertTrue(caseName.isNotBlank())
 
-            handler.handle(message)
+        handler.handle(message)
 
-            verify(exactly = 0) { telegramClient.sendMessage(any(), any(), any(), any()) }
-            coVerify(exactly = 0) { chatClient.processMessage(any(), any(), any()) }
-        }
+        verify(exactly = 0) { telegramClient.sendMessage(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { chatClient.processMessage(any(), any(), any()) }
+    }
 
     companion object {
         @JvmStatic

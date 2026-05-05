@@ -82,22 +82,26 @@ class SubscriptionGrpcClientTest {
 
     @ParameterizedTest(name = "{0}")
     @EnumSource(FailingCall::class)
-    fun `throws SubscriptionServiceException for failing gRPC calls`(
-        failingCall: FailingCall,
-    ) =
+    fun `throws SubscriptionServiceException for failing gRPC calls`(failingCall: FailingCall) =
         runTest {
             when (failingCall) {
                 FailingCall.CHECK_ACCESS -> {
-                    coEvery { stub.checkAccess(any(), any()) } throws StatusException(Status.UNAVAILABLE)
+                    coEvery { stub.checkAccess(any(), any()) } throws
+                        StatusException(Status.UNAVAILABLE)
                 }
                 FailingCall.GET_MODEL_PREFERENCE -> {
-                    coEvery { stub.getModelPreference(any(), any()) } throws StatusException(Status.UNAVAILABLE)
+                    coEvery { stub.getModelPreference(any(), any()) } throws
+                        StatusException(Status.UNAVAILABLE)
                 }
             }
 
             assertThrows<SubscriptionServiceException> {
                 when (failingCall) {
-                    FailingCall.CHECK_ACCESS -> client.checkAccess(userId = userId, modelId = "gpt-4o")
+                    FailingCall.CHECK_ACCESS ->
+                        client.checkAccess(
+                            userId = userId,
+                            modelId = "gpt-4o",
+                        )
                     FailingCall.GET_MODEL_PREFERENCE -> client.getModelPreference(userId = userId)
                 }
             }
@@ -120,7 +124,12 @@ class SubscriptionGrpcClientTest {
             coEvery { stub.refundAccess(any(), any()) } returns
                 RefundAccessResponse.getDefaultInstance()
 
-            client.refundAccess(userId = userId, modelId = "gpt-4o", freeConsumed = 1, paidConsumed = 2)
+            client.refundAccess(
+                userId = userId,
+                modelId = "gpt-4o",
+                freeConsumed = 1,
+                paidConsumed = 2,
+            )
 
             coVerify { stub.refundAccess(any(), any()) }
         }
@@ -130,7 +139,12 @@ class SubscriptionGrpcClientTest {
         runTest {
             coEvery { stub.refundAccess(any(), any()) } throws StatusException(Status.UNAVAILABLE)
 
-            client.refundAccess(userId = userId, modelId = "gpt-4o", freeConsumed = 1, paidConsumed = 2)
+            client.refundAccess(
+                userId = userId,
+                modelId = "gpt-4o",
+                freeConsumed = 1,
+                paidConsumed = 2,
+            )
         }
 
     enum class FailingCall {

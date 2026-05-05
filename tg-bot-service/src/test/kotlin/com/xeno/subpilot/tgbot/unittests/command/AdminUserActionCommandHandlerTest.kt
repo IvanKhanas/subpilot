@@ -32,9 +32,9 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.verify
 import net.datafaker.Faker
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
-import org.junit.jupiter.api.extension.ExtendWith
 
 import kotlinx.coroutines.test.runTest
 
@@ -70,59 +70,56 @@ class AdminUserActionCommandHandlerTest {
 
     @ParameterizedTest(name = "{0} sends invalid usage response for malformed command")
     @EnumSource(ActionCase::class)
-    fun `handle sends invalid usage response when user id is missing`(
-        actionCase: ActionCase,
-    ) = runTest {
-        val handler = createHandler(actionCase)
+    fun `handle sends invalid usage response when user id is missing`(actionCase: ActionCase) =
+        runTest {
+            val handler = createHandler(actionCase)
 
-        handler.handle(message(actionCase.command))
+            handler.handle(message(actionCase.command))
 
-        verify {
-            telegramClient.sendMessage(
-                chatId,
-                BotResponses.ADMIN_INVALID_USAGE_RESPONSE.format(actionCase.command),
-            )
+            verify {
+                telegramClient.sendMessage(
+                    chatId,
+                    BotResponses.ADMIN_INVALID_USAGE_RESPONSE.format(actionCase.command),
+                )
+            }
+            coVerify(exactly = 0) { subscriptionClient.blockUser(any()) }
+            coVerify(exactly = 0) { subscriptionClient.unblockUser(any()) }
         }
-        coVerify(exactly = 0) { subscriptionClient.blockUser(any()) }
-        coVerify(exactly = 0) { subscriptionClient.unblockUser(any()) }
-    }
 
     @ParameterizedTest(name = "{0} executes state change and sends success message")
     @EnumSource(ActionCase::class)
-    fun `handle performs action and sends success response`(
-        actionCase: ActionCase,
-    ) = runTest {
-        val handler = createHandler(actionCase)
-        stubStateChange(actionCase)
+    fun `handle performs action and sends success response`(actionCase: ActionCase) =
+        runTest {
+            val handler = createHandler(actionCase)
+            stubStateChange(actionCase)
 
-        handler.handle(message("${actionCase.command} $targetUserId"))
+            handler.handle(message("${actionCase.command} $targetUserId"))
 
-        verifyStateChange(actionCase)
-        verify {
-            telegramClient.sendMessage(
-                chatId,
-                actionCase.successResponse.format(targetUserId),
-            )
+            verifyStateChange(actionCase)
+            verify {
+                telegramClient.sendMessage(
+                    chatId,
+                    actionCase.successResponse.format(targetUserId),
+                )
+            }
         }
-    }
 
     @ParameterizedTest(name = "{0} sends failure response when subscription service fails")
     @EnumSource(ActionCase::class)
-    fun `handle sends failure response on subscription error`(
-        actionCase: ActionCase,
-    ) = runTest {
-        val handler = createHandler(actionCase)
-        stubStateChangeError(actionCase)
+    fun `handle sends failure response on subscription error`(actionCase: ActionCase) =
+        runTest {
+            val handler = createHandler(actionCase)
+            stubStateChangeError(actionCase)
 
-        handler.handle(message("${actionCase.command} $targetUserId"))
+            handler.handle(message("${actionCase.command} $targetUserId"))
 
-        verify {
-            telegramClient.sendMessage(
-                chatId,
-                BotResponses.ADMIN_ACTION_FAILED_RESPONSE.text,
-            )
+            verify {
+                telegramClient.sendMessage(
+                    chatId,
+                    BotResponses.ADMIN_ACTION_FAILED_RESPONSE.text,
+                )
+            }
         }
-    }
 
     private fun createHandler(actionCase: ActionCase): AdminBotCommand =
         when (actionCase) {
@@ -133,7 +130,9 @@ class AdminUserActionCommandHandlerTest {
     private fun stubStateChange(actionCase: ActionCase) {
         when (actionCase) {
             ActionCase.BAN -> coEvery { subscriptionClient.blockUser(targetUserId) } returns Unit
-            ActionCase.UNBAN -> coEvery { subscriptionClient.unblockUser(targetUserId) } returns Unit
+            ActionCase.UNBAN ->
+                coEvery { subscriptionClient.unblockUser(targetUserId) } returns
+                    Unit
         }
     }
 
@@ -141,14 +140,19 @@ class AdminUserActionCommandHandlerTest {
         val error = SubscriptionServiceException("failed")
         when (actionCase) {
             ActionCase.BAN -> coEvery { subscriptionClient.blockUser(targetUserId) } throws error
-            ActionCase.UNBAN -> coEvery { subscriptionClient.unblockUser(targetUserId) } throws error
+            ActionCase.UNBAN ->
+                coEvery { subscriptionClient.unblockUser(targetUserId) } throws
+                    error
         }
     }
 
     private fun verifyStateChange(actionCase: ActionCase) {
         when (actionCase) {
             ActionCase.BAN -> coVerify(exactly = 1) { subscriptionClient.blockUser(targetUserId) }
-            ActionCase.UNBAN -> coVerify(exactly = 1) { subscriptionClient.unblockUser(targetUserId) }
+            ActionCase.UNBAN ->
+                coVerify(
+                    exactly = 1,
+                ) { subscriptionClient.unblockUser(targetUserId) }
         }
     }
 

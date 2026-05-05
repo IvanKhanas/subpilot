@@ -99,7 +99,8 @@ class PaymentSucceededConsumerContainerTest {
                     ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to kafka.bootstrapServers,
                     ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG to false,
                     ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
-                    ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
+                    ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG
+                        to StringDeserializer::class.java,
                 ),
             )
         activatedConsumer.assign(listOf(ACTIVATED_PARTITION))

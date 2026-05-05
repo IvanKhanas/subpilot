@@ -92,7 +92,8 @@ class ProviderButtonHandlerTest {
     fun `handle in main menu shows model selection for chosen provider`() {
         every { navigationService.peek(chatId) } returns BotScreen.MAIN_MENU
         val textSlot = slot<String>()
-        every { telegramClient.sendMessage(chatId, capture(textSlot), any(), any()) } returns sentMessageId
+        every { telegramClient.sendMessage(chatId, capture(textSlot), any(), any()) } returns
+            sentMessageId
 
         runBlocking {
             handler.handle(
@@ -131,7 +132,8 @@ class ProviderButtonHandlerTest {
                 ),
             )
         val textSlot = slot<String>()
-        every { telegramClient.sendMessage(chatId, capture(textSlot), any(), any()) } returns sentMessageId
+        every { telegramClient.sendMessage(chatId, capture(textSlot), any(), any()) } returns
+            sentMessageId
 
         runBlocking {
             handler.handle(

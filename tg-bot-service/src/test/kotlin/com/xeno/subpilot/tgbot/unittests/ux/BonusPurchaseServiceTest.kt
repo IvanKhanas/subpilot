@@ -196,7 +196,14 @@ class BonusPurchaseServiceTest {
             SpendResult.Denied(SpendDenialReason.INSUFFICIENT_POINTS)
 
         runBlocking {
-            service.confirmBonusSpend(chatId, userId, planId, idempotencyKey, promptMessageId, "prompt")
+            service.confirmBonusSpend(
+                chatId,
+                userId,
+                planId,
+                idempotencyKey,
+                promptMessageId,
+                "prompt",
+            )
         }
 
         coVerify { planPurchaseService.startPayment(chatId, userId, planId, 0) }
@@ -211,7 +218,14 @@ class BonusPurchaseServiceTest {
             LoyaltyServiceException("down", RuntimeException())
 
         runBlocking {
-            service.confirmBonusSpend(chatId, userId, planId, idempotencyKey, promptMessageId, "prompt")
+            service.confirmBonusSpend(
+                chatId,
+                userId,
+                planId,
+                idempotencyKey,
+                promptMessageId,
+                "prompt",
+            )
         }
 
         verify {
@@ -247,7 +261,14 @@ class BonusPurchaseServiceTest {
             }
 
         runBlocking {
-            service.confirmBonusSpend(chatId, userId, planId, UUID.randomUUID(), promptMessageId, "prompt")
+            service.confirmBonusSpend(
+                chatId,
+                userId,
+                planId,
+                UUID.randomUUID(),
+                promptMessageId,
+                "prompt",
+            )
         }
 
         coVerify { planPurchaseService.startPayment(chatId, userId, planId, expectedBonusToApply) }

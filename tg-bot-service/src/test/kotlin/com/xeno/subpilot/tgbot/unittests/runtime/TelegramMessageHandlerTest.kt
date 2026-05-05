@@ -117,7 +117,12 @@ class TelegramMessageHandlerTest {
     @Test
     fun `dispatches callback query to matching handler and answers callback`() =
         runTest {
-            val callback = CallbackQuery(id = firstCallbackId, from = User(id = regularUserId), data = "start_chat")
+            val callback =
+                CallbackQuery(
+                    id = firstCallbackId,
+                    from = User(id = regularUserId),
+                    data = "start_chat",
+                )
             val update = Update(updateId = 1, callbackQuery = callback)
 
             every { startChatCallback.supports("start_chat") } returns true
@@ -133,7 +138,12 @@ class TelegramMessageHandlerTest {
     @Test
     fun `answers callback even when no matching handler found`() =
         runTest {
-            val callback = CallbackQuery(id = secondCallbackId, from = User(id = regularUserId), data = "unknown_action")
+            val callback =
+                CallbackQuery(
+                    id = secondCallbackId,
+                    from = User(id = regularUserId),
+                    data = "unknown_action",
+                )
             val update = Update(updateId = 2, callbackQuery = callback)
 
             every { startChatCallback.supports("unknown_action") } returns false
@@ -208,7 +218,14 @@ class TelegramMessageHandlerTest {
             handler.onUpdate(update)
 
             coVerify(exactly = 1) { banCommand.handle(message) }
-            verify(exactly = 0) { telegramClient.sendMessage(any(), BotResponses.UNKNOWN_COMMAND_RESPONSE.text, any(), any()) }
+            verify(exactly = 0) {
+                telegramClient.sendMessage(
+                    any(),
+                    BotResponses.UNKNOWN_COMMAND_RESPONSE.text,
+                    any(),
+                    any(),
+                )
+            }
         }
 
     @ParameterizedTest(name = "{0}")
@@ -216,24 +233,23 @@ class TelegramMessageHandlerTest {
     fun `rejects admin command for unknown or non-admin users`(
         caseName: String,
         userInfo: UserInfoResult?,
-    ) =
-        runTest {
-            kotlin.test.assertTrue(caseName.isNotBlank())
-            val message = message(ADMIN_COMMAND_TEXT, regularUserId)
-            val update = Update(updateId = 11, message = message)
-            coEvery { subscriptionClient.getUserInfo(regularUserId) } returns userInfo
-            every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
+    ) = runTest {
+        kotlin.test.assertTrue(caseName.isNotBlank())
+        val message = message(ADMIN_COMMAND_TEXT, regularUserId)
+        val update = Update(updateId = 11, message = message)
+        coEvery { subscriptionClient.getUserInfo(regularUserId) } returns userInfo
+        every { telegramClient.sendMessage(any(), any(), any(), any()) } returns null
 
-            handler.onUpdate(update)
+        handler.onUpdate(update)
 
-            coVerify(exactly = 0) { banCommand.handle(any()) }
-            verify {
-                telegramClient.sendMessage(
-                    chatId = chatId,
-                    text = BotResponses.UNKNOWN_COMMAND_RESPONSE.text,
-                )
-            }
+        coVerify(exactly = 0) { banCommand.handle(any()) }
+        verify {
+            telegramClient.sendMessage(
+                chatId = chatId,
+                text = BotResponses.UNKNOWN_COMMAND_RESPONSE.text,
+            )
         }
+    }
 
     @Test
     fun `routes text to matching TextButtonHandler`() =
@@ -291,13 +307,12 @@ class TelegramMessageHandlerTest {
     private fun message(
         text: String,
         userId: Long,
-    ) =
-        Message(
-            messageId = 1,
-            chat = Chat(id = chatId),
-            text = text,
-            from = User(id = userId, firstName = "Test"),
-        )
+    ) = Message(
+        messageId = 1,
+        chat = Chat(id = chatId),
+        text = text,
+        from = User(id = userId, firstName = "Test"),
+    )
 
     companion object {
         private const val ADMIN_COMMAND_TEXT = "/ban 123"

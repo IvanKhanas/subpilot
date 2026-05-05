@@ -72,7 +72,8 @@ class BalanceCommandHandlerTest {
         coEvery { subscriptionClient.getBalance(userId) } returns balance
         every { balanceFormatter.format(balance) } returns "formatted-balance"
         val textSlot = io.mockk.slot<String>()
-        every { telegramClient.sendMessage(chatId, capture(textSlot), any(), any()) } returns sentMessageId
+        every { telegramClient.sendMessage(chatId, capture(textSlot), any(), any()) } returns
+            sentMessageId
 
         runBlocking {
             handler.handle(

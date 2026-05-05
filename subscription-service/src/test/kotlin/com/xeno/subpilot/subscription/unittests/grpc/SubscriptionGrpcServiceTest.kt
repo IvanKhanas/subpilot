@@ -15,8 +15,8 @@
  */
 package com.xeno.subpilot.subscription.unittests.grpc
 
-import com.xeno.subpilot.proto.subscription.v1.DenialReason
 import com.xeno.subpilot.proto.subscription.v1.CreatePlanRequest
+import com.xeno.subpilot.proto.subscription.v1.DenialReason
 import com.xeno.subpilot.proto.subscription.v1.PlanAllocation as ProtoPlanAllocation
 import com.xeno.subpilot.proto.subscription.v1.activateSubscriptionRequest
 import com.xeno.subpilot.proto.subscription.v1.blockUserRequest
@@ -273,7 +273,13 @@ class SubscriptionGrpcServiceTest {
         runTest {
             every { modelPreferenceService.getModelPreference(testUserId) } returns "gpt-4o"
 
-            val response = service.getModelPreference(getModelPreferenceRequest { userId = testUserId })
+            val response =
+                service.getModelPreference(
+                    getModelPreferenceRequest {
+                        userId =
+                            testUserId
+                    },
+                )
 
             assertEquals("gpt-4o", response.modelId)
         }
@@ -283,7 +289,13 @@ class SubscriptionGrpcServiceTest {
         runTest {
             every { modelPreferenceService.getModelPreference(testUserId) } returns null
 
-            val response = service.getModelPreference(getModelPreferenceRequest { userId = testUserId })
+            val response =
+                service.getModelPreference(
+                    getModelPreferenceRequest {
+                        userId =
+                            testUserId
+                    },
+                )
 
             assertEquals("", response.modelId)
         }
@@ -405,7 +417,13 @@ class SubscriptionGrpcServiceTest {
     fun `activateSubscription delegates to activation service with parsed UUID`() =
         runTest {
             val idempotencyKey = UUID.randomUUID()
-            every { activationService.activateDirect(testUserId, "openai-basic", idempotencyKey) } returns
+            every {
+                activationService.activateDirect(
+                    testUserId,
+                    "openai-basic",
+                    idempotencyKey,
+                )
+            } returns
                 true
 
             val response =
@@ -464,7 +482,8 @@ class SubscriptionGrpcServiceTest {
     @Test
     fun `blockUser maps service failure to NOT_FOUND status`() =
         runTest {
-            every { userAdminService.blockUser(testUserId) } throws IllegalArgumentException("missing")
+            every { userAdminService.blockUser(testUserId) } throws
+                IllegalArgumentException("missing")
 
             val ex =
                 assertThrows<StatusException> {
@@ -487,7 +506,8 @@ class SubscriptionGrpcServiceTest {
     @Test
     fun `unblockUser maps service failure to NOT_FOUND status`() =
         runTest {
-            every { userAdminService.unblockUser(testUserId) } throws IllegalArgumentException("missing")
+            every { userAdminService.unblockUser(testUserId) } throws
+                IllegalArgumentException("missing")
 
             val ex =
                 assertThrows<StatusException> {

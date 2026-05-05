@@ -122,7 +122,8 @@ class ModelCommandHandlerTest {
 
     @Test
     fun `handle clears context when provider changes`() {
-        coEvery { subscriptionClient.setModelPreference(userId, TARGET_MODEL_ID) } returns providerChanged
+        coEvery { subscriptionClient.setModelPreference(userId, TARGET_MODEL_ID) } returns
+            providerChanged
         coJustRun { chatClient.clearContext(chatId) }
 
         runBlocking { handler.handle(message(MODEL_COMMAND)) }

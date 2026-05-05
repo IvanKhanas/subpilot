@@ -97,13 +97,17 @@ class ModerationGrpcServiceTest {
         runTest {
             val longPrompt = "x".repeat(MAX_PREVIEW_LENGTH + 25)
             val textSlot = slot<String>()
-            every { telegramClient.sendMessage(MODERATION_CHAT_ID, capture(textSlot), any(), any()) } returns sentMessageId
+            every {
+                telegramClient.sendMessage(MODERATION_CHAT_ID, capture(textSlot), any(), any())
+            } returns sentMessageId
 
             service.notifyFlaggedPrompt(request(promptText = longPrompt))
 
             val expectedPreview = "${"x".repeat(MAX_PREVIEW_LENGTH)}…"
             assertTrue(textSlot.captured.contains("Text: \"$expectedPreview\""))
-            verify(exactly = 1) { telegramClient.sendMessage(MODERATION_CHAT_ID, any(), any(), any()) }
+            verify(
+                exactly = 1,
+            ) { telegramClient.sendMessage(MODERATION_CHAT_ID, any(), any(), any()) }
         }
 
     private fun request(promptText: String): FlaggedPromptNotification =

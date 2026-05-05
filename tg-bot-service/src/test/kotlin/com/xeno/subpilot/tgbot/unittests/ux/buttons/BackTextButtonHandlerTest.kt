@@ -34,6 +34,7 @@ import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 
 import java.util.stream.Stream
+
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -73,15 +74,14 @@ class BackTextButtonHandlerTest {
         caseName: String,
         poppedScreen: BotScreen?,
         expectedScreen: BotScreen,
-    ) =
-        runTest {
-            assertTrue(caseName.isNotBlank())
-            every { navigationService.pop(chatId) } returns poppedScreen
+    ) = runTest {
+        assertTrue(caseName.isNotBlank())
+        every { navigationService.pop(chatId) } returns poppedScreen
 
-            handler.handle(Message(chat = Chat(id = chatId)))
+        handler.handle(Message(chat = Chat(id = chatId)))
 
-            verify { screenRenderer.render(chatId, expectedScreen) }
-        }
+        verify { screenRenderer.render(chatId, expectedScreen) }
+    }
 
     companion object {
         @JvmStatic
@@ -94,7 +94,11 @@ class BackTextButtonHandlerTest {
         @JvmStatic
         fun renderCases(): Stream<Arguments> =
             Stream.of(
-                Arguments.of("pop returns previous screen", BotScreen.PROVIDER_MENU, BotScreen.PROVIDER_MENU),
+                Arguments.of(
+                    "pop returns previous screen",
+                    BotScreen.PROVIDER_MENU,
+                    BotScreen.PROVIDER_MENU,
+                ),
                 Arguments.of("pop returns null", null, BotScreen.MAIN_MENU),
             )
     }

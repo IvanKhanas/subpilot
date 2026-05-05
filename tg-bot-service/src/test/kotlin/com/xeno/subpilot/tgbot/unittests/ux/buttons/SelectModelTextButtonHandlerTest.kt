@@ -168,7 +168,10 @@ class SelectModelTextButtonHandlerTest {
         private const val TEST_USER_ID = 1L
         private const val TEST_CHAT_ID = 42L
         private const val UNKNOWN_MODEL_TEXT = "UnknownModel"
-        private val KNOWN_MODEL_TEXT = AiProvider.OPENAI.models.first().displayName
+        private val KNOWN_MODEL_TEXT =
+            AiProvider.OPENAI.models
+                .first()
+                .displayName
 
         @JvmStatic
         fun supportsCases(): Stream<Arguments> =

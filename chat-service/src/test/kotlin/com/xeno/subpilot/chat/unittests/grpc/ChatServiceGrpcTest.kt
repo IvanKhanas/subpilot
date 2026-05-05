@@ -48,9 +48,9 @@ import org.junit.jupiter.params.provider.MethodSource
 
 import java.util.stream.Stream
 
+import kotlin.reflect.KClass
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import kotlin.reflect.KClass
 
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -211,42 +211,43 @@ class ChatServiceGrpcTest {
         caseName: String,
         failureStage: FailureStage,
         expectedExceptionType: KClass<out Throwable>,
-    ) =
-        runTest {
-            assertTrue(caseName.isNotBlank())
-            accessAllowed()
-            coJustRun { subscriptionGrpcClient.refundAccess(any(), any(), any(), any()) }
+    ) = runTest {
+        assertTrue(caseName.isNotBlank())
+        accessAllowed()
+        coJustRun { subscriptionGrpcClient.refundAccess(any(), any(), any(), any()) }
 
-            when (failureStage) {
-                FailureStage.OPENAI -> {
-                    every { chatHistoryService.getHistory(any()) } returns emptyList()
-                    coEvery { openAiChatClient.chat(any(), any(), any()) } throws OpenAiException("timeout")
-                }
-                FailureStage.GET_HISTORY -> {
-                    every { chatHistoryService.getHistory(any()) } throws ChatHistoryException("redis down")
-                }
-                FailureStage.APPEND -> {
-                    every { chatHistoryService.getHistory(any()) } returns emptyList()
-                    coEvery { openAiChatClient.chat(any(), any(), any()) } returns "AI response"
-                    every { chatHistoryService.append(any(), any(), any()) } throws
-                        ChatHistoryException("redis down")
-                }
+        when (failureStage) {
+            FailureStage.OPENAI -> {
+                every { chatHistoryService.getHistory(any()) } returns emptyList()
+                coEvery { openAiChatClient.chat(any(), any(), any()) } throws
+                    OpenAiException("timeout")
+            }
+            FailureStage.GET_HISTORY -> {
+                every { chatHistoryService.getHistory(any()) } throws
+                    ChatHistoryException("redis down")
+            }
+            FailureStage.APPEND -> {
+                every { chatHistoryService.getHistory(any()) } returns emptyList()
+                coEvery { openAiChatClient.chat(any(), any(), any()) } returns "AI response"
+                every { chatHistoryService.append(any(), any(), any()) } throws
+                    ChatHistoryException("redis down")
+            }
+        }
+
+        val thrown =
+            assertThrows<Throwable> {
+                grpc.processMessage(
+                    processMessageRequest {
+                        this.chatId = testChatId
+                        this.userId = testUserId
+                        this.text = requestText
+                    },
+                )
             }
 
-            val thrown =
-                assertThrows<Throwable> {
-                    grpc.processMessage(
-                        processMessageRequest {
-                            this.chatId = testChatId
-                            this.userId = testUserId
-                            this.text = requestText
-                        },
-                    )
-                }
-
-            assertTrue(expectedExceptionType.isInstance(thrown))
-            coVerify { subscriptionGrpcClient.refundAccess(testUserId, any(), any(), any()) }
-        }
+        assertTrue(expectedExceptionType.isInstance(thrown))
+        coVerify { subscriptionGrpcClient.refundAccess(testUserId, any(), any(), any()) }
+    }
 
     @Test
     fun `clearHistory delegates to chatHistoryService`() =
@@ -329,7 +330,8 @@ class ChatServiceGrpcTest {
     fun `processMessage continues when moderation check throws`() =
         runTest {
             accessAllowed()
-            coEvery { moderationClient.flaggedCategories(any()) } throws RuntimeException("moderation down")
+            coEvery { moderationClient.flaggedCategories(any()) } throws
+                RuntimeException("moderation down")
             every { chatHistoryService.getHistory(any()) } returns emptyList()
             coEvery { openAiChatClient.chat(any(), any(), any()) } returns "AI response"
             justRun { chatHistoryService.append(any(), any(), any()) }
@@ -374,8 +376,16 @@ class ChatServiceGrpcTest {
         fun refundFailureCases(): Stream<Arguments> =
             Stream.of(
                 Arguments.of("openai chat failure", FailureStage.OPENAI, OpenAiException::class),
-                Arguments.of("history retrieval failure", FailureStage.GET_HISTORY, ChatHistoryException::class),
-                Arguments.of("history append failure", FailureStage.APPEND, ChatHistoryException::class),
+                Arguments.of(
+                    "history retrieval failure",
+                    FailureStage.GET_HISTORY,
+                    ChatHistoryException::class,
+                ),
+                Arguments.of(
+                    "history append failure",
+                    FailureStage.APPEND,
+                    ChatHistoryException::class,
+                ),
             )
     }
 

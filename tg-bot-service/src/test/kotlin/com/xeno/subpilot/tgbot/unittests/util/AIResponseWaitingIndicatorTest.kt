@@ -83,22 +83,21 @@ class AIResponseWaitingIndicatorTest {
     fun `wrap deletes waiting message when waiting message exists`(
         caseName: String,
         blockThrows: Boolean,
-    ) =
-        runTest {
-            assertTrue(caseName.isNotBlank())
-            every { telegramClient.sendMessage(any(), any()) } returns waitingMessageId
-            justRun { telegramClient.editMessage(any(), any(), any()) }
-            justRun { telegramClient.deleteMessage(any(), any()) }
+    ) = runTest {
+        assertTrue(caseName.isNotBlank())
+        every { telegramClient.sendMessage(any(), any()) } returns waitingMessageId
+        justRun { telegramClient.editMessage(any(), any(), any()) }
+        justRun { telegramClient.deleteMessage(any(), any()) }
 
-            if (blockThrows) {
-                assertThrows<RuntimeException> {
-                    indicator.wrap(chatId = chatId) { throw RuntimeException("boom") }
-                }
-            } else {
-                val result = indicator.wrap(chatId = chatId) { "ai response" }
-                assertEquals("ai response", result)
+        if (blockThrows) {
+            assertThrows<RuntimeException> {
+                indicator.wrap(chatId = chatId) { throw RuntimeException("boom") }
             }
-
-            verify { telegramClient.deleteMessage(chatId, waitingMessageId) }
+        } else {
+            val result = indicator.wrap(chatId = chatId) { "ai response" }
+            assertEquals("ai response", result)
         }
+
+        verify { telegramClient.deleteMessage(chatId, waitingMessageId) }
+    }
 }
