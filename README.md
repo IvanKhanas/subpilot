@@ -4,19 +4,6 @@ Telegram AI bot backend as a microservice system: paid subscriptions, free quota
 
 The project is designed as a strong portfolio case for a junior/stage backend role in fintech teams (T-Банк / Альфа): reliability, idempotency, security boundaries, and test coverage are first-class concerns.
 
----
-
-## Why this project is strong for fintech interviews
-
-- Transaction safety across DB + Kafka via transactional outbox.
-- Idempotent business flows for duplicate webhooks/retries.
-- Clear separation of synchronous (gRPC) and asynchronous (Kafka) communication.
-- Security perimeter: Nginx as the only public entry point, scoped JWT auth in gateway/admin layers.
-- Operational maturity: Prometheus metrics, Grafana dashboards, alert rules, centralized quality gates in CI.
-- Structured test strategy: unit, integration, and testcontainers.
-
----
-
 ## Architecture
 
 ### Services
