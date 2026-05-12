@@ -280,19 +280,6 @@ curl 'https://<host>/api/v1/admin/audit?page=0&size=20' \
 ./gradlew jacocoTestReport
 ```
 
----
-
-## How to present this on an interview
-
-Good narrative for a junior fintech interview:
-
-1. Explain one reliability problem and your solution (outbox + idempotency).
-2. Show one security boundary decision (public edge in Nginx + scoped JWT in gateway).
-3. Show one operability decision (metrics/alerts you would watch in production).
-4. Show one quality decision (CI gates + coverage threshold + testcontainers).
-5. Discuss one tradeoff and next step (for example: add distributed tracing, add contract tests, move secrets to Vault).
-
----
 
 ## License
 
